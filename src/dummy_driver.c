@@ -413,7 +413,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     clockRanges = (ClockRangePtr)xnfcalloc(sizeof(ClockRange), 1);
     clockRanges->next = NULL;
     clockRanges->ClockMulFactor = 1;
-    clockRanges->minClock = 11000;   /* guessed §§§ */
+    clockRanges->minClock = 11000;   /* guessed Â§Â§Â§ */
     clockRanges->maxClock = 300000;
     clockRanges->clockIndex = -1;		/* programmable */
     clockRanges->interlaceAllowed = TRUE; 
