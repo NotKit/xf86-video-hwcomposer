@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/dummy/dummy.h,v 1.2 2003/04/23 21:51:35 tsi Exp $ */
+/* $XFree86$ */
 
 /* All drivers should typically include these */
 #include "xf86.h"
