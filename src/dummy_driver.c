@@ -46,8 +46,10 @@
 #include "Xproto.h"
 #include "scrnintstr.h"
 #include "servermd.h"
+#ifdef XFreeXDGA
 #define _XF86DGA_SERVER_
 #include "extensions/xf86dgastr.h"
+#endif
 
 /* Mandatory functions */
 static const OptionInfoRec *	DUMMYAvailableOptions(int chipid, int busid);
