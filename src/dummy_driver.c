@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/dummy/dummy_driver.c,v 1.5tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/dummy/dummy_driver.c,v 1.4 2003/08/23 15:02:57 dawes Exp $ */
 
 /*
  * Copyright 2002, SuSE Linux AG, Author: Egbert Eich
@@ -56,7 +56,7 @@ static Bool     DUMMYEnterVT(int scrnIndex, int flags);
 static void     DUMMYLeaveVT(int scrnIndex, int flags);
 static Bool     DUMMYCloseScreen(int scrnIndex, ScreenPtr pScreen);
 static void     DUMMYFreeScreen(int scrnIndex, int flags);
-static ModeStatus DUMMYValidMode(int scrnIndex, DisplayModePtr mode,
+static int      DUMMYValidMode(int scrnIndex, DisplayModePtr mode,
                                  Bool verbose, int flags);
 static Bool	DUMMYSaveScreen(ScreenPtr pScreen, int mode);
 
@@ -149,7 +149,7 @@ static XF86ModuleVersionInfo dummyVersRec =
 	MODULEVENDORSTRING,
 	MODINFOSTRING1,
 	MODINFOSTRING2,
-	XORG_VERSION_CURRENT,
+	XF86_VERSION_CURRENT,
 	DUMMY_MAJOR_VERSION, DUMMY_MINOR_VERSION, DUMMY_PATCHLEVEL,
 	ABI_CLASS_VIDEODRV,
 	ABI_VIDEODRV_VERSION,
@@ -471,10 +471,6 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 	    RETURN;
 	xf86LoaderReqSymLists(ramdacSymbols, NULL);
     }
-    
-    /* We have no contiguous physical fb in physical memory */
-    pScrn->memPhysBase = 0;
-    pScrn->fbOffset = 0;
 
     return TRUE;
 }
@@ -544,6 +540,7 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     DUMMYPtr dPtr;
     int ret;
     VisualPtr visual;
+    int height, width;
     
     /*
      * we need to get the ScrnInfoRec for this screen, so let's allocate
@@ -583,6 +580,9 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
      * Call the framebuffer layer's ScreenInit function, and fill in other
      * pScreen fields.
      */
+    width = pScrn->virtualX;
+    height = pScrn->virtualY;
+    
     ret = fbScreenInit(pScreen, dPtr->FBBase,
 			    pScrn->virtualX, pScrn->virtualY,
 			    pScrn->xDpi, pScrn->yDpi,
@@ -753,7 +753,7 @@ DUMMYSaveScreen(ScreenPtr pScreen, int mode)
 }
 
 /* Optional */
-static ModeStatus
+static int
 DUMMYValidMode(int scrnIndex, DisplayModePtr mode, Bool verbose, int flags)
 {
     return(MODE_OK);
