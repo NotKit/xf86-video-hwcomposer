@@ -471,6 +471,10 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 	    RETURN;
 	xf86LoaderReqSymLists(ramdacSymbols, NULL);
     }
+    
+    /* We have no contiguous physical fb in physical memory */
+    pScrn->memPhysBase = 0;
+    pScrn->fbOffset = 0;
 
     return TRUE;
 }
