@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/dummy/dummy_driver.c,v 1.4 2003/08/23 15:02:57 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/dummy/dummy_driver.c,v 1.5tsi Exp $ */
 
 /*
  * Copyright 2002, SuSE Linux AG, Author: Egbert Eich
@@ -20,6 +20,10 @@
 
 /* All drivers using the mi colormap manipulation need this */
 #include "micmap.h"
+
+/* identifying atom needed by magnifiers */
+#include "Xatom.h"
+#include "property.h"
 
 #include "xf86cmap.h"
 
@@ -55,8 +59,9 @@ static Bool     DUMMYScreenInit(int Index, ScreenPtr pScreen, int argc,
 static Bool     DUMMYEnterVT(int scrnIndex, int flags);
 static void     DUMMYLeaveVT(int scrnIndex, int flags);
 static Bool     DUMMYCloseScreen(int scrnIndex, ScreenPtr pScreen);
+static Bool     DUMMYCreateWindow(WindowPtr pWin);
 static void     DUMMYFreeScreen(int scrnIndex, int flags);
-static int      DUMMYValidMode(int scrnIndex, DisplayModePtr mode,
+static ModeStatus DUMMYValidMode(int scrnIndex, DisplayModePtr mode,
                                  Bool verbose, int flags);
 static Bool	DUMMYSaveScreen(ScreenPtr pScreen, int mode);
 
@@ -149,7 +154,7 @@ static XF86ModuleVersionInfo dummyVersRec =
 	MODULEVENDORSTRING,
 	MODINFOSTRING1,
 	MODINFOSTRING2,
-	XF86_VERSION_CURRENT,
+	XORG_VERSION_CURRENT,
 	DUMMY_MAJOR_VERSION, DUMMY_MINOR_VERSION, DUMMY_PATCHLEVEL,
 	ABI_CLASS_VIDEODRV,
 	ABI_VIDEODRV_VERSION,
@@ -309,10 +314,6 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     if (!DUMMYGetRec(pScrn)) {
 	return FALSE;
     }
-# define RETURN \
-    { DUMMYFreeRec(pScrn);\
-			    return FALSE;\
-					     }
     
     dPtr = DUMMYPTR(pScrn);
 
@@ -471,6 +472,10 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 	    RETURN;
 	xf86LoaderReqSymLists(ramdacSymbols, NULL);
     }
+    
+    /* We have no contiguous physical fb in physical memory */
+    pScrn->memPhysBase = 0;
+    pScrn->fbOffset = 0;
 
     return TRUE;
 }
@@ -532,6 +537,8 @@ DUMMYLoadPalette(
 
 }
 
+static ScrnInfoPtr DUMMYScrn; /* static-globalize it */
+
 /* Mandatory */
 static Bool
 DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
@@ -540,7 +547,6 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     DUMMYPtr dPtr;
     int ret;
     VisualPtr visual;
-    int height, width;
     
     /*
      * we need to get the ScrnInfoRec for this screen, so let's allocate
@@ -548,6 +554,7 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
      */
     pScrn = xf86Screens[pScreen->myNum];
     dPtr = DUMMYPTR(pScrn);
+    DUMMYScrn = pScrn;
 
 
     if (!(dPtr->FBBase = xalloc(pScrn->videoRam * 1024)))
@@ -580,9 +587,6 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
      * Call the framebuffer layer's ScreenInit function, and fill in other
      * pScreen fields.
      */
-    width = pScrn->virtualX;
-    height = pScrn->virtualY;
-    
     ret = fbScreenInit(pScreen, dPtr->FBBase,
 			    pScrn->virtualX, pScrn->virtualY,
 			    pScrn->xDpi, pScrn->yDpi,
@@ -667,6 +671,10 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     /* Wrap the current CloseScreen function */
     dPtr->CloseScreen = pScreen->CloseScreen;
     pScreen->CloseScreen = DUMMYCloseScreen;
+
+    /* Wrap the current CreateWindow function */
+    dPtr->CreateWindow = pScreen->CreateWindow;
+    pScreen->CreateWindow = DUMMYCreateWindow;
 
     /* Report any unused options (only for the first generation) */
     if (serverGeneration == 1) {
@@ -753,7 +761,7 @@ DUMMYSaveScreen(ScreenPtr pScreen, int mode)
 }
 
 /* Optional */
-static int
+static ModeStatus
 DUMMYValidMode(int scrnIndex, DisplayModePtr mode, Bool verbose, int flags)
 {
     return(MODE_OK);
@@ -777,3 +785,35 @@ dummyModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
     return(TRUE);
 }
 
+
+Atom VFB_PROP  = 0;
+#define  VFB_PROP_NAME  "VFB_IDENT"
+
+
+
+static Bool
+DUMMYCreateWindow(WindowPtr pWin)
+{
+    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+    WindowPtr pWinRoot;
+    int ret;
+	
+    ret = dPtr->CreateWindow(pWin);
+    if(ret != TRUE)
+	return(ret);
+	
+    if(dPtr->prop == FALSE) {
+        pWinRoot = WindowTable[DUMMYScrn->pScreen->myNum];
+        if (! ValidAtom(VFB_PROP))
+            VFB_PROP = MakeAtom(VFB_PROP_NAME, strlen(VFB_PROP_NAME), 1);
+
+        ret = ChangeWindowProperty(pWinRoot, VFB_PROP, XA_STRING, 
+		8, PropModeReplace, (int)4, (pointer)"TRUE", FALSE);
+	if( ret != Success)
+		ErrorF("Could not set VFB root window property");
+        dPtr->prop = TRUE;
+
+	return TRUE;
+    }
+    return TRUE;
+}
