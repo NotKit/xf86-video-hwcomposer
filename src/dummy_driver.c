@@ -69,6 +69,9 @@ static Bool	DUMMYSaveScreen(ScreenPtr pScreen, int mode);
 static Bool     dummyModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode);
 static void	dummySave(ScrnInfoPtr pScrn);
 static void	dummyRestore(ScrnInfoPtr pScrn, Bool restoreText);
+static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+				pointer ptr);
+
 
 /* static void     DUMMYDisplayPowerManagementSet(ScrnInfoPtr pScrn, */
 /* 				int PowerManagementMode, int flags); */
@@ -103,7 +106,8 @@ DriverRec DUMMY = {
     DUMMYProbe,
     DUMMYAvailableOptions,
     NULL,
-    0
+    0,
+    dummyDriverFunc
 };
 
 static SymTabRec DUMMYChipsets[] = {
@@ -175,7 +179,7 @@ dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
 
     if (!setupDone) {
 	setupDone = TRUE;
-        xf86AddDriver(&DUMMY, module, 0);
+        xf86AddDriver(&DUMMY, module, HaveDriverFuncs);
 
 	/*
 	 * Modules that this driver always requires can be loaded here
@@ -816,4 +820,20 @@ DUMMYCreateWindow(WindowPtr pWin)
 	return TRUE;
     }
     return TRUE;
+}
+
+
+static Bool
+dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
+{
+    CARD32 *flag;
+    
+    switch (op) {
+	case GET_REQUIRED_HW_INTERFACES:
+	    flag = (CARD32*)ptr;
+	    (*flag) = 0;
+	    return TRUE;
+	default:
+	    return FALSE;
+    }
 }
