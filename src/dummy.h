@@ -8,7 +8,7 @@
 #include "xf86Cursor.h"
 
 #include "xf86xv.h"
-#include "Xv.h"
+#include <X11/extensions/Xv.h>
 
 /* Supported chipsets */
 typedef enum {
