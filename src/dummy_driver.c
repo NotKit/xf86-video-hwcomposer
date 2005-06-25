@@ -101,7 +101,7 @@ static int pix24bpp = 0;
  * an upper-case version of the driver name.
  */
 
-DriverRec DUMMY = {
+_X_EXPORT DriverRec DUMMY = {
     VERSION,
     DUMMY_DRIVER_NAME,
     DUMMYIdentify,
@@ -172,7 +172,7 @@ static XF86ModuleVersionInfo dummyVersRec =
  * This is the module init data.
  * Its name has to be the driver name followed by ModuleData
  */
-XF86ModuleData dummyModuleData = { &dummyVersRec, dummySetup, NULL };
+_X_EXPORT XF86ModuleData dummyModuleData = { &dummyVersRec, dummySetup, NULL };
 
 static pointer
 dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
