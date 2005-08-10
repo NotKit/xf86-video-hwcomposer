@@ -49,7 +49,7 @@ AC_SUBST(moduledir)
 PKG_CHECK_MODULES(XORG, xorg-server xproto)
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
 
-CFLAGS="$XORG_CFLAGS "' -I$(top_srcdir)/src'
+CFLAGS="$CFLAGS $XORG_CFLAGS "' -I$(top_srcdir)/src'
 INCLUDES="$XORG_INCS -I${sdkdir} "'-I$(top_srcdir)/src -I$(prefix)/include'
 AC_SUBST([CFLAGS])
 AC_SUBST([INCLUDES])
