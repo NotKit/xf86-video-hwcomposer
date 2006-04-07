@@ -281,7 +281,7 @@ DUMMYProbe(DriverPtr drv, int flags)
 	    /* Allocate a ScrnInfoRec and claim the slot */
 	    if ((pScrn = xf86AllocateScreen(drv,0 ))) {
 		   xf86AddEntityToScreen(pScrn,entityIndex);
-		    pScrn->driverVersion = VERSION;
+		    pScrn->driverVersion = DUMMY_VERSION;
 		    pScrn->driverName    = DUMMY_DRIVER_NAME;
 		    pScrn->name          = DUMMY_NAME;
 		    pScrn->Probe         = DUMMYProbe;
