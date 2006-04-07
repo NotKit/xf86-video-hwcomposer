@@ -11,7 +11,6 @@
 /* All drivers should typically include these */
 #include "xf86.h"
 #include "xf86_OSproc.h"
-#include "xf86_ansic.h"
 
 /* This is used for module versioning */
 #include "xf86Version.h"
@@ -82,12 +81,12 @@ static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 /* static void     DUMMYDisplayPowerManagementSet(ScrnInfoPtr pScrn, */
 /* 				int PowerManagementMode, int flags); */
 
-#define VERSION 4000
+#define DUMMY_VERSION 4000
 #define DUMMY_NAME "DUMMY"
 #define DUMMY_DRIVER_NAME "dummy"
 
 #define DUMMY_MAJOR_VERSION 0
-#define DUMMY_MINOR_VERSION 1
+#define DUMMY_MINOR_VERSION 2
 #define DUMMY_PATCHLEVEL 0
 
 /*
@@ -106,7 +105,7 @@ static int pix24bpp = 0;
  */
 
 _X_EXPORT DriverRec DUMMY = {
-    VERSION,
+    DUMMY_VERSION,
     DUMMY_DRIVER_NAME,
     DUMMYIdentify,
     DUMMYProbe,
