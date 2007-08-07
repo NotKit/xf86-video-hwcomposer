@@ -85,9 +85,9 @@ static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 #define DUMMY_NAME "DUMMY"
 #define DUMMY_DRIVER_NAME "dummy"
 
-#define DUMMY_MAJOR_VERSION 0
-#define DUMMY_MINOR_VERSION 2
-#define DUMMY_PATCHLEVEL 0
+#define DUMMY_MAJOR_VERSION PACKAGE_VERSION_MAJOR
+#define DUMMY_MINOR_VERSION PACKAGE_VERSION_MINOR
+#define DUMMY_PATCHLEVEL PACKAGE_VERSION_PATCHLEVEL
 
 /*
  * This is intentionally screen-independent.  It indicates the binding
