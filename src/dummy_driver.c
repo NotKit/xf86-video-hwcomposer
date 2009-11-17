@@ -759,11 +759,8 @@ dummyModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
     return(TRUE);
 }
 
-
 Atom VFB_PROP  = 0;
 #define  VFB_PROP_NAME  "VFB_IDENT"
-
-
 
 static Bool
 DUMMYCreateWindow(WindowPtr pWin)
@@ -771,8 +768,11 @@ DUMMYCreateWindow(WindowPtr pWin)
     DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
     WindowPtr pWinRoot;
     int ret;
-	
+
+    pScreen->CreateWindow = dPtr->CreateWindow;
     ret = dPtr->CreateWindow(pWin);
+    pScreen->CreateWindow = DUMMYCreateWindow;
+
     if(ret != TRUE)
 	return(ret);
 	
