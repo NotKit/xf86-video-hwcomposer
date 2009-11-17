@@ -792,6 +792,9 @@ DUMMYCreateWindow(WindowPtr pWin)
     return TRUE;
 }
 
+#ifndef HW_SKIP_CONSOLE
+#define HW_SKIP_CONSOLE 4
+#endif
 
 static Bool
 dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
@@ -801,7 +804,7 @@ dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
     switch (op) {
 	case GET_REQUIRED_HW_INTERFACES:
 	    flag = (CARD32*)ptr;
-	    (*flag) = 0;
+	    (*flag) = HW_SKIP_CONSOLE;
 	    return TRUE;
 	default:
 	    return FALSE;
