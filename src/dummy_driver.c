@@ -772,6 +772,7 @@ DUMMYCreateWindow(WindowPtr pWin)
 
     pScreen->CreateWindow = dPtr->CreateWindow;
     ret = pScreen->CreateWindow(pWin);
+    dPtr->CreateWindow = pScreen->CreateWindow;
     pScreen->CreateWindow = DUMMYCreateWindow;
 
     if(ret != TRUE)
