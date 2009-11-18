@@ -765,12 +765,13 @@ Atom VFB_PROP  = 0;
 static Bool
 DUMMYCreateWindow(WindowPtr pWin)
 {
+    ScreenPtr pScreen = pWin->drawable.pScreen;
     DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
     WindowPtr pWinRoot;
     int ret;
 
     pScreen->CreateWindow = dPtr->CreateWindow;
-    ret = dPtr->CreateWindow(pWin);
+    ret = pScreen->CreateWindow(pWin);
     pScreen->CreateWindow = DUMMYCreateWindow;
 
     if(ret != TRUE)
