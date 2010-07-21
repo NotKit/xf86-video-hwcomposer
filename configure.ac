@@ -63,8 +63,6 @@ PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901] xproto fontsproto $REQUIRED_
 
 # Checks for libraries.
 
-# Checks for header files.
-AC_HEADER_STDC
 
 DRIVER_NAME=dummy
 AC_SUBST([DRIVER_NAME])
