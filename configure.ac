@@ -67,7 +67,8 @@ PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901] xproto fontsproto $REQUIRED_
 DRIVER_NAME=dummy
 AC_SUBST([DRIVER_NAME])
 
-AC_OUTPUT([
-	Makefile
-	src/Makefile
+AC_CONFIG_FILES([
+                Makefile
+                src/Makefile
 ])
+AC_OUTPUT
