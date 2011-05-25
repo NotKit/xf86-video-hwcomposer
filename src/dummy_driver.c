@@ -202,7 +202,7 @@ DUMMYFreeRec(ScrnInfoPtr pScrn)
 {
     if (pScrn->driverPrivate == NULL)
 	return;
-    xfree(pScrn->driverPrivate);
+    free(pScrn->driverPrivate);
     pScrn->driverPrivate = NULL;
 }
 
@@ -357,7 +357,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
     xf86CollectOptions(pScrn, device->options);
     /* Process the options */
-    if (!(dPtr->Options = xalloc(sizeof(DUMMYOptions))))
+    if (!(dPtr->Options = malloc(sizeof(DUMMYOptions))))
 	return FALSE;
     memcpy(dPtr->Options, DUMMYOptions, sizeof(DUMMYOptions));
 
@@ -535,7 +535,7 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     DUMMYScrn = pScrn;
 
 
-    if (!(dPtr->FBBase = xalloc(pScrn->videoRam * 1024)))
+    if (!(dPtr->FBBase = malloc(pScrn->videoRam * 1024)))
 	return FALSE;
     
     /*
@@ -705,7 +705,7 @@ DUMMYCloseScreen(int scrnIndex, ScreenPtr pScreen)
 
     if(pScrn->vtSema){
  	dummyRestore(pScrn, TRUE);
-	xfree(dPtr->FBBase);
+	free(dPtr->FBBase);
     }
 
     if (dPtr->CursorInfo)
