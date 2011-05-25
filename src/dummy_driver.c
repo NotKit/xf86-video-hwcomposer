@@ -85,6 +85,9 @@ static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 #define DUMMY_MINOR_VERSION PACKAGE_VERSION_MINOR
 #define DUMMY_PATCHLEVEL PACKAGE_VERSION_PATCHLEVEL
 
+#define DUMMY_MAX_WIDTH 32767
+#define DUMMY_MAX_HEIGHT 32767
+
 /*
  * This is intentionally screen-independent.  It indicates the binding
  * choice made in the first PreInit.
@@ -402,8 +405,9 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 	int apertureSize = (pScrn->videoRam * 1024);
 	i = xf86ValidateModes(pScrn, pScrn->monitor->Modes,
 			      pScrn->display->modes, clockRanges,
-			      NULL, 256, 2048,(8 * pScrn->bitsPerPixel),
-			      128, 2048, pScrn->display->virtualX,
+			      NULL, 256, DUMMY_MAX_WIDTH,
+			      (8 * pScrn->bitsPerPixel),
+			      128, DUMMY_MAX_HEIGHT, pScrn->display->virtualX,
 			      pScrn->display->virtualY, apertureSize,
 			      LOOKUP_BEST_REFRESH);
 
