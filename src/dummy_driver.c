@@ -592,7 +592,9 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
     xf86SetBlackWhitePixels(pScreen);
 
+#ifdef XFreeXDGA
     DUMMYDGAInit(pScreen);
+#endif
     
     if (dPtr->swCursor)
 	xf86DrvMsg(scrnIndex, X_CONFIG, "Using Software Cursor.\n");
