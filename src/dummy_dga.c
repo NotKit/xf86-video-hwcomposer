@@ -49,10 +49,10 @@ DUMMYDGAInit(ScreenPtr pScreen)
 
    while(pMode) {
 
-	newmodes = xrealloc(modes, (num + 1) * sizeof(DGAModeRec));
+	newmodes = realloc(modes, (num + 1) * sizeof(DGAModeRec));
 
 	if(!newmodes) {
-	   xfree(modes);
+	   free(modes);
 	   return FALSE;
 	}
 	modes = newmodes;
