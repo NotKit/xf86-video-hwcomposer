@@ -45,7 +45,7 @@
 #include <X11/Xproto.h>
 #include "scrnintstr.h"
 #include "servermd.h"
-#ifdef XFreeXDGA
+#ifdef USE_DGA
 #define _XF86DGA_SERVER_
 #include <X11/extensions/xf86dgaproto.h>
 #endif
@@ -592,7 +592,7 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
     xf86SetBlackWhitePixels(pScreen);
 
-#ifdef XFreeXDGA
+#ifdef USE_DGA
     DUMMYDGAInit(pScreen);
 #endif
     

@@ -61,7 +61,7 @@ XORG_DRIVER_CHECK_EXT(XV, videoproto)
 
 if test "x$DGA" = xyes; then
 	XORG_DRIVER_CHECK_EXT(XFreeXDGA, xf86dgaproto)
-	AC_DEFINE(XFreeXDGA, 1, [Support DGA extension])
+	AC_DEFINE(USE_DGA, 1, [Support DGA extension])
 fi
 AC_SUBST([DGA])
 AM_CONDITIONAL([DGA], [test "x$DGA" = xyes])
