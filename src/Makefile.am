@@ -29,6 +29,7 @@ AM_CFLAGS = $(XORG_CFLAGS) $(PCIACCESS_CFLAGS)
 
 dummy_drv_la_LTLIBRARIES = dummy_drv.la
 dummy_drv_la_LDFLAGS = -module -avoid-version
+dummy_drv_la_LIBADD = $(XORG_LIBS)
 dummy_drv_ladir = @moduledir@/drivers
 
 dummy_drv_la_SOURCES = \
