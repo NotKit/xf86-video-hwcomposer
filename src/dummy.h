@@ -5,8 +5,10 @@
 
 #include "xf86Cursor.h"
 
+#ifdef XvExtension
 #include "xf86xv.h"
 #include <X11/extensions/Xv.h>
+#endif
 #include <string.h>
 
 /* Supported chipsets */
@@ -57,7 +59,9 @@ typedef struct dummyRec
 
     Bool screenSaver;
     Bool video;
+#ifdef XvExtension
     XF86VideoAdaptorPtr overlayAdaptor;
+#endif
     int overlay;
     int overlay_offset;
     int videoKey;
