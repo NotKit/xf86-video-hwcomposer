@@ -33,7 +33,7 @@ DGAFunctionRec DUMMYDGAFuncs = {
 Bool
 DUMMYDGAInit(ScreenPtr pScreen)
 {   
-   ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+   ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
    DUMMYPtr pDUMMY = DUMMYPTR(pScrn);
    DGAModePtr modes = NULL, newmodes = NULL, currentMode;
    DisplayModePtr pMode, firstMode;

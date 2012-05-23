@@ -532,7 +532,7 @@ DUMMYScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
      * we need to get the ScrnInfoRec for this screen, so let's allocate
      * one first thing
      */
-    pScrn = xf86Screens[pScreen->myNum];
+    pScrn = xf86ScreenToScrn(pScreen);
     dPtr = DUMMYPTR(pScrn);
     DUMMYScrn = pScrn;
 
@@ -734,7 +734,7 @@ DUMMYSaveScreen(ScreenPtr pScreen, int mode)
     DUMMYPtr dPtr;
 
     if (pScreen != NULL) {
-	pScrn = xf86Screens[pScreen->myNum];
+	pScrn = xf86ScreenToScrn(pScreen);
 	dPtr = DUMMYPTR(pScrn);
 
 	dPtr->screenSaver = xf86IsUnblank(mode);
