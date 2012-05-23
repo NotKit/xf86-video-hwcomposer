@@ -11,6 +11,8 @@
 #endif
 #include <string.h>
 
+#include "compat-api.h"
+
 /* Supported chipsets */
 typedef enum {
     DUMMY_CHIP

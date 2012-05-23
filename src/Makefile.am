@@ -33,6 +33,7 @@ dummy_drv_la_LIBADD = $(XORG_LIBS)
 dummy_drv_ladir = @moduledir@/drivers
 
 dummy_drv_la_SOURCES = \
+         compat-api.h \
          dummy_cursor.c \
          dummy_driver.c \
          dummy.h
