@@ -20,8 +20,8 @@ typedef enum {
 
 /* function prototypes */
 
-extern Bool DUMMYSwitchMode(int scrnIndex, DisplayModePtr mode, int flags);
-extern void DUMMYAdjustFrame(int scrnIndex, int x, int y, int flags);
+extern Bool DUMMYSwitchMode(SWITCH_MODE_ARGS_DECL);
+extern void DUMMYAdjustFrame(ADJUST_FRAME_ARGS_DECL);
 
 /* in dummy_cursor.c */
 extern Bool DUMMYCursorInit(ScreenPtr pScrn);
