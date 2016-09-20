@@ -673,25 +673,6 @@ DUMMYSwitchMode(SWITCH_MODE_ARGS_DECL)
 void
 DUMMYAdjustFrame(ADJUST_FRAME_ARGS_DECL)
 {
-    SCRN_INFO_PTR(arg);
-    int Base; 
-
-    Base = (y * pScrn->displayWidth + x) >> 2;
-
-    /* Scale Base by the number of bytes per pixel. */
-    switch (pScrn->depth) {
-    case  8 :
-	break;
-    case 15 :
-    case 16 :
-	Base *= 2;
-	break;
-    case 24 :
-	Base *= 3;
-	break;
-    default :
-	break;
-    }
 }
 
 /* Mandatory */
