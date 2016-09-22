@@ -65,9 +65,6 @@ static ModeStatus DUMMYValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode,
 static Bool	DUMMYSaveScreen(ScreenPtr pScreen, int mode);
 
 /* Internally used functions */
-static Bool     dummyModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode);
-static void	dummySave(ScrnInfoPtr pScrn);
-static void	dummyRestore(ScrnInfoPtr pScrn, Bool restoreText);
 static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 				pointer ptr);
 
@@ -461,14 +458,6 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 static Bool
 DUMMYEnterVT(VT_FUNC_ARGS_DECL)
 {
-    SCRN_INFO_PTR(arg);
-    
-    /* Should we re-save the text mode on each VT enter? */
-    if(!dummyModeInit(pScrn, pScrn->currentMode))
-      return FALSE;
-
-    DUMMYAdjustFrame(ADJUST_FRAME_ARGS(pScrn, pScrn->frameX0, pScrn->frameY0));
-
     return TRUE;
 }
 
@@ -476,8 +465,6 @@ DUMMYEnterVT(VT_FUNC_ARGS_DECL)
 static void
 DUMMYLeaveVT(VT_FUNC_ARGS_DECL)
 {
-    SCRN_INFO_PTR(arg);
-    dummyRestore(pScrn, TRUE);
 }
 
 static void
@@ -535,15 +522,6 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     if (!(dPtr->FBBase = malloc(pScrn->videoRam * 1024)))
 	return FALSE;
-    
-    /*
-     * next we save the current state and setup the first mode
-     */
-    dummySave(pScrn);
-    
-    if (!dummyModeInit(pScrn,pScrn->currentMode))
-	return FALSE;
-    DUMMYAdjustFrame(ADJUST_FRAME_ARGS(pScrn, pScrn->frameX0, pScrn->frameY0));
 
     /*
      * Reset visual list.
@@ -665,8 +643,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 Bool
 DUMMYSwitchMode(SWITCH_MODE_ARGS_DECL)
 {
-    SCRN_INFO_PTR(arg);
-    return dummyModeInit(pScrn, mode);
+    return TRUE;
 }
 
 /* Mandatory */
@@ -683,7 +660,6 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
     if(pScrn->vtSema){
- 	dummyRestore(pScrn, TRUE);
 	free(dPtr->FBBase);
     }
 
@@ -723,24 +699,6 @@ static ModeStatus
 DUMMYValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode, Bool verbose, int flags)
 {
     return(MODE_OK);
-}
-
-static void
-dummySave(ScrnInfoPtr pScrn)
-{
-}
-
-static void 
-dummyRestore(ScrnInfoPtr pScrn, Bool restoreText)
-{
-}
-    
-static Bool
-dummyModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
-{
-    dummyRestore(pScrn, FALSE);
-    
-    return(TRUE);
 }
 
 Atom VFB_PROP  = 0;
