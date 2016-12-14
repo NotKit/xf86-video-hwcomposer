@@ -66,7 +66,7 @@ AC_SUBST([DGA])
 AM_CONDITIONAL([DGA], [test "x$DGA" = xyes])
 
 # Obtain compiler/linker options for the driver dependencies
-PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901] xproto fontsproto $REQUIRED_MODULES)
+PKG_CHECK_MODULES(XORG, [xorg-server >= 1.4.99.901] xproto fontsproto $REQUIRED_MODULES)
 
 # Checks for libraries.
 
