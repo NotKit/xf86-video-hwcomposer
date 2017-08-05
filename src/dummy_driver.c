@@ -254,6 +254,9 @@ DUMMYProbe(DriverPtr drv, int flags)
 	    }
 	}
     }    
+
+    free(devSections);
+
     return foundScreen;
 }
 
