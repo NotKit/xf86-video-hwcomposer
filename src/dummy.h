@@ -50,7 +50,6 @@ typedef struct dummyRec
     int cursorFG, cursorBG;
 
     dummy_colors colors[256];
-    pointer* FBBase;
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
     Bool prop;
 } DUMMYRec, *DUMMYPtr;

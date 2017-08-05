@@ -501,7 +501,8 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     DUMMYPtr dPtr;
     int ret;
     VisualPtr visual;
-    
+    void *pixels;
+
     /*
      * we need to get the ScrnInfoRec for this screen, so let's allocate
      * one first thing
@@ -511,7 +512,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     DUMMYScrn = pScrn;
 
 
-    if (!(dPtr->FBBase = malloc(pScrn->videoRam * 1024)))
+    if (!(pixels = malloc(pScrn->videoRam * 1024)))
 	return FALSE;
 
     /*
@@ -532,7 +533,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
      * Call the framebuffer layer's ScreenInit function, and fill in other
      * pScreen fields.
      */
-    ret = fbScreenInit(pScreen, dPtr->FBBase,
+    ret = fbScreenInit(pScreen, pixels,
 			    pScrn->virtualX, pScrn->virtualY,
 			    pScrn->xDpi, pScrn->yDpi,
 			    pScrn->displayWidth, pScrn->bitsPerPixel);
@@ -644,9 +645,7 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
-    if(pScrn->vtSema){
-	free(dPtr->FBBase);
-    }
+    free(pScreen->GetScreenPixmap(pScreen)->devPrivate.ptr);
 
     if (dPtr->CursorInfo)
 	xf86DestroyCursorInfoRec(dPtr->CursorInfo);
