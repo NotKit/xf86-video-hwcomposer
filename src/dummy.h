@@ -28,9 +28,6 @@ extern Bool DUMMYCursorInit(ScreenPtr pScrn);
 extern void DUMMYShowCursor(ScrnInfoPtr pScrn);
 extern void DUMMYHideCursor(ScrnInfoPtr pScrn);
 
-/* in dummy_dga.c */
-Bool DUMMYDGAInit(ScreenPtr pScreen);
-
 /* globals */
 typedef struct _color
 {
@@ -41,10 +38,6 @@ typedef struct _color
 
 typedef struct dummyRec 
 {
-    DGAModePtr		DGAModes;
-    int			numDGAModes;
-    Bool		DGAactive;
-    int			DGAViewportStatus;
     /* options */
     OptionInfoPtr Options;
     Bool swCursor;

@@ -39,10 +39,6 @@
 #include <X11/Xproto.h>
 #include "scrnintstr.h"
 #include "servermd.h"
-#ifdef USE_DGA
-#define _XF86DGA_SERVER_
-#include <X11/extensions/xf86dgaproto.h>
-#endif
 
 /* Mandatory functions */
 static const OptionInfoRec *	DUMMYAvailableOptions(int chipid, int busid);
@@ -563,10 +559,6 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     xf86SetBlackWhitePixels(pScreen);
 
-#ifdef USE_DGA
-    DUMMYDGAInit(pScreen);
-#endif
-    
     if (dPtr->swCursor)
 	xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Using Software Cursor.\n");
 
