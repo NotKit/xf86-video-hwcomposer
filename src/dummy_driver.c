@@ -675,15 +675,6 @@ DUMMYFreeScreen(FREE_SCREEN_ARGS_DECL)
 static Bool
 DUMMYSaveScreen(ScreenPtr pScreen, int mode)
 {
-    ScrnInfoPtr pScrn = NULL;
-    DUMMYPtr dPtr;
-
-    if (pScreen != NULL) {
-	pScrn = xf86ScreenToScrn(pScreen);
-	dPtr = DUMMYPTR(pScrn);
-
-	dPtr->screenSaver = xf86IsUnblank(mode);
-    } 
     return TRUE;
 }
 

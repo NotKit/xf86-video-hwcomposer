@@ -56,7 +56,6 @@ typedef struct dummyRec
     int cursorX, cursorY;
     int cursorFG, cursorBG;
 
-    Bool screenSaver;
     dummy_colors colors[256];
     pointer* FBBase;
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
