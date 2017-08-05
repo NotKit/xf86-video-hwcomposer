@@ -29,11 +29,6 @@
 
 #include "picturestr.h"
 
-#ifdef XvExtension
-#include "xf86xv.h"
-#include <X11/extensions/Xv.h>
-#endif
-
 /*
  * Driver data structures.
  */
@@ -617,8 +612,6 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
                          CMAP_PALETTED_TRUECOLOR 
 			     | CMAP_RELOAD_ON_MODE_SWITCH))
 	return FALSE;
-
-/*     DUMMYInitVideo(pScreen); */
 
     pScreen->SaveScreen = DUMMYSaveScreen;
 

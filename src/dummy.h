@@ -31,9 +31,6 @@ extern void DUMMYHideCursor(ScrnInfoPtr pScrn);
 /* in dummy_dga.c */
 Bool DUMMYDGAInit(ScreenPtr pScreen);
 
-/* in dummy_video.c */
-extern void DUMMYInitVideo(ScreenPtr pScreen);
-
 /* globals */
 typedef struct _color
 {
@@ -60,14 +57,6 @@ typedef struct dummyRec
     int cursorFG, cursorBG;
 
     Bool screenSaver;
-    Bool video;
-#ifdef XvExtension
-    XF86VideoAdaptorPtr overlayAdaptor;
-#endif
-    int overlay;
-    int overlay_offset;
-    int videoKey;
-    int interlace;
     dummy_colors colors[256];
     pointer* FBBase;
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */

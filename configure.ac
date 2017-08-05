@@ -56,7 +56,6 @@ AC_SUBST(moduledir)
 # Store the list of server defined optional extensions in REQUIRED_MODULES
 XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
 XORG_DRIVER_CHECK_EXT(RENDER, renderproto)
-XORG_DRIVER_CHECK_EXT(XV, videoproto)
 
 if test "x$DGA" = xyes; then
 	XORG_DRIVER_CHECK_EXT(XFreeXDGA, xf86dgaproto)
