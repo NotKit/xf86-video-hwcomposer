@@ -180,7 +180,7 @@ DUMMYGetRec(ScrnInfoPtr pScrn)
 
     if (pScrn->driverPrivate == NULL)
 	return FALSE;
-        return TRUE;
+    return TRUE;
 }
 
 static void
