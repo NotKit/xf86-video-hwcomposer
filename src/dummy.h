@@ -49,7 +49,7 @@ typedef struct dummyRec
     int cursorX, cursorY;
     int cursorFG, cursorBG;
 
-    dummy_colors colors[256];
+    dummy_colors colors[1024];
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
     Bool prop;
 } DUMMYRec, *DUMMYPtr;

@@ -301,6 +301,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 	case 15:
 	case 16:
 	case 24:
+	case 30:
 	    break;
 	default:
 	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -603,7 +604,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     if(!miCreateDefColormap(pScreen))
 	return FALSE;
 
-    if (!xf86HandleColormaps(pScreen, 256, pScrn->rgbBits,
+    if (!xf86HandleColormaps(pScreen, 1024, pScrn->rgbBits,
                          DUMMYLoadPalette, NULL, 
                          CMAP_PALETTED_TRUECOLOR 
 			     | CMAP_RELOAD_ON_MODE_SWITCH))
