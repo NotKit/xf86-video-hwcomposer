@@ -40,6 +40,9 @@
 #include "scrnintstr.h"
 #include "servermd.h"
 
+//#include "hwcomposer.h"
+#include "renderer.h"
+
 /* Mandatory functions */
 static const OptionInfoRec *	DUMMYAvailableOptions(int chipid, int busid);
 static void     DUMMYIdentify(int flags);
@@ -64,8 +67,8 @@ static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 /* 				int PowerManagementMode, int flags); */
 
 #define DUMMY_VERSION 4000
-#define DUMMY_NAME "DUMMY"
-#define DUMMY_DRIVER_NAME "dummy"
+#define DUMMY_NAME "hwcomposer"
+#define DUMMY_DRIVER_NAME "hwcomposer"
 
 #define DUMMY_MAJOR_VERSION PACKAGE_VERSION_MAJOR
 #define DUMMY_MINOR_VERSION PACKAGE_VERSION_MINOR
@@ -89,7 +92,7 @@ static int pix24bpp = 0;
  * an upper-case version of the driver name.
  */
 
-_X_EXPORT DriverRec DUMMY = {
+_X_EXPORT DriverRec HWCOMPOSER = {
     DUMMY_VERSION,
     DUMMY_DRIVER_NAME,
     DUMMYIdentify,
@@ -101,7 +104,7 @@ _X_EXPORT DriverRec DUMMY = {
 };
 
 static SymTabRec DUMMYChipsets[] = {
-    { DUMMY_CHIP,   "dummy" },
+    { DUMMY_CHIP,   "hwcomposer" },
     { -1,		 NULL }
 };
 
@@ -118,9 +121,9 @@ static const OptionInfoRec DUMMYOptions[] = {
 
 static MODULESETUPPROTO(dummySetup);
 
-static XF86ModuleVersionInfo dummyVersRec =
+static XF86ModuleVersionInfo hwcomposerVersRec =
 {
-	"dummy",
+	"hwcomposer",
 	MODULEVENDORSTRING,
 	MODINFOSTRING1,
 	MODINFOSTRING2,
@@ -136,7 +139,7 @@ static XF86ModuleVersionInfo dummyVersRec =
  * This is the module init data.
  * Its name has to be the driver name followed by ModuleData
  */
-_X_EXPORT XF86ModuleData dummyModuleData = { &dummyVersRec, dummySetup, NULL };
+_X_EXPORT XF86ModuleData hwcomposerModuleData = { &hwcomposerVersRec, dummySetup, NULL };
 
 static pointer
 dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
@@ -145,7 +148,7 @@ dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
 
     if (!setupDone) {
 	setupDone = TRUE;
-        xf86AddDriver(&DUMMY, module, HaveDriverFuncs);
+        xf86AddDriver(&HWCOMPOSER, module, HaveDriverFuncs);
 
 	/*
 	 * Modules that this driver always requires can be loaded here
@@ -390,7 +393,6 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
     /* Subtract memory for HW cursor */
 
-
     {
 	int apertureSize = (pScrn->videoRam * 1024);
 	i = xf86ValidateModes(pScrn, pScrn->monitor->Modes,
@@ -495,6 +497,63 @@ DUMMYLoadPalette(
 
 }
 
+static void DUMMYBlockHandler(ScreenPtr pScreen, void *timeout)
+{
+    DUMMYPtr dPtr = DUMMYPTR(xf86ScreenToScrn(pScreen));
+
+    pScreen->BlockHandler = dPtr->BlockHandler;
+    pScreen->BlockHandler(pScreen, timeout);
+    pScreen->BlockHandler = DUMMYBlockHandler;
+
+	RegionPtr dirty = DamageRegion(dPtr->damage);
+    unsigned num_cliprects = REGION_NUM_RECTS(dirty);
+
+	printf("Blockhandler called\n");
+
+	if (num_cliprects)
+	{
+		printf("Calling EGL update\n");
+		EGLRenderer_Update(dPtr->EGLRenderer_private, pScreen);
+		DamageEmpty(dPtr->damage);
+	}
+}
+
+static Bool
+CreateScreenResources(ScreenPtr pScreen)
+{
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+    PixmapPtr rootPixmap;
+    Bool ret;
+    void *pixels = NULL;
+    int err;
+
+    pScreen->CreateScreenResources = dPtr->CreateScreenResources;
+    ret = pScreen->CreateScreenResources(pScreen);
+    pScreen->CreateScreenResources = CreateScreenResources;
+
+    rootPixmap = pScreen->GetScreenPixmap(pScreen);
+
+//     if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
+//         FatalError("Couldn't adjust screen pixmap\n");
+
+	dPtr->damage = DamageCreate(NULL, NULL, DamageReportNone, TRUE,
+								pScreen, rootPixmap);
+
+	if (dPtr->damage) {
+		DamageRegister(&rootPixmap->drawable, dPtr->damage);
+		dPtr->dirty_enabled = TRUE;
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Damage tracking initialized\n");
+	}
+	else {
+		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+					"Failed to create screen damage record\n");
+		return FALSE;
+	}
+
+    return ret;
+}
+
 static ScrnInfoPtr DUMMYScrn; /* static-globalize it */
 
 /* Mandatory */
@@ -564,12 +623,13 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     xf86SetBlackWhitePixels(pScreen);
 
+	dPtr->CreateScreenResources = pScreen->CreateScreenResources;
+    pScreen->CreateScreenResources = CreateScreenResources;
+
     if (dPtr->swCursor)
 	xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Using Software Cursor.\n");
 
     {
-
-	 
 	BoxRec AvailFBArea;
 	int lines = pScrn->videoRam * 1024 /
 	    (pScrn->displayWidth * (pScrn->bitsPerPixel >> 3));
@@ -577,9 +637,9 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 	AvailFBArea.y1 = 0;
 	AvailFBArea.x2 = pScrn->displayWidth;
 	AvailFBArea.y2 = lines;
-	xf86InitFBManager(pScreen, &AvailFBArea); 
-	
-	xf86DrvMsg(pScrn->scrnIndex, X_INFO, 
+	xf86InitFBManager(pScreen, &AvailFBArea);
+
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		   "Using %i scanlines of offscreen memory \n"
 		   , lines - pScrn->virtualY);
     }
@@ -611,7 +671,6 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 	return FALSE;
 
     pScreen->SaveScreen = DUMMYSaveScreen;
-
     
     /* Wrap the current CloseScreen function */
     dPtr->CloseScreen = pScreen->CloseScreen;
@@ -625,6 +684,22 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     if (serverGeneration == 1) {
 	xf86ShowUnusedOptions(pScrn->scrnIndex, pScrn->options);
     }
+
+	/* Wrap the current BlockHandler function */
+	dPtr->BlockHandler = pScreen->BlockHandler;
+    pScreen->BlockHandler = DUMMYBlockHandler;
+
+	dPtr->HWComposer_private = NULL;
+	dPtr->HWComposer_private = HWComposer_Init(pScreen);
+	if (dPtr->HWComposer_private)
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "initialized HWComposer API and layers\n");
+
+	dPtr->EGLRenderer_private = NULL;
+	dPtr->EGLRenderer_private = EGLRenderer_Init(pScreen, dPtr->HWComposer_private);
+	if (dPtr->EGLRenderer_private)
+		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+		           "initialized EGL renderer\n");
 
     return TRUE;
 }

@@ -43,7 +43,9 @@ typedef struct dummyRec
     Bool swCursor;
     /* proc pointer */
     CloseScreenProcPtr CloseScreen;
+	CreateScreenResourcesProcPtr	CreateScreenResources;
     xf86CursorInfoPtr CursorInfo;
+    ScreenBlockHandlerProcPtr BlockHandler;
 
     Bool DummyHWCursorShown;
     int cursorX, cursorY;
@@ -52,6 +54,12 @@ typedef struct dummyRec
     dummy_colors colors[1024];
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
     Bool prop;
+
+    DamagePtr damage;
+    Bool dirty_enabled;
+
+	void *HWComposer_private;
+    void *EGLRenderer_private;
 } DUMMYRec, *DUMMYPtr;
 
 /* The privates of the DUMMY driver */

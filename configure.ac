@@ -22,10 +22,10 @@
 
 # Initialize Autoconf
 AC_PREREQ([2.60])
-AC_INIT([xf86-video-dummy],
+AC_INIT([xf86-video-hwcomposer],
         [0.3.8],
         [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
-        [xf86-video-dummy])
+        [xf86-video-hwcomposer])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(.)
@@ -46,11 +46,35 @@ AC_PROG_LIBTOOL
 AH_TOP([#include "xorg-server.h"])
 
 # Define a configure option for an alternate module directory
-AC_ARG_WITH(xorg-module-dir, [  --with-xorg-module-dir=DIR ],
-                             [ moduledir="$withval" ],
-                             [ moduledir="$libdir/xorg/modules" ])
-AC_SUBST(moduledir)
+AC_ARG_WITH(xorg-module-dir,
+            AS_HELP_STRING([--with-xorg-module-dir=DIR],
+                           [Default xorg module directory [[default=$libdir/xorg/modules]]]),
+            [moduledir="$withval"],
+            [moduledir="$libdir/xorg/modules"])
+AC_ARG_ENABLE(pciaccess,     AS_HELP_STRING([--enable-pciaccess],
+                             [Enable use of libpciaccess (default: disabled)]),
+			     [PCIACCESS=$enableval], [PCIACCESS=no])
 
+# Store the list of server defined optional extensions in REQUIRED_MODULES
+XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
+XORG_DRIVER_CHECK_EXT(RENDER, renderproto)
+XORG_DRIVER_CHECK_EXT(XV, videoproto)
+
+# Obtain compiler/linker options for the driver dependencies
+PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901 xproto fontsproto xf86driproto libdrm pixman-1 $REQUIRED_MODULES])
+
+# Checks for libraries.
+
+AC_CHECK_HEADER([hardware/hardware.h], [have_libhardware=yes], [have_libhardware=no])
+
+if test "x$have_libhardware" = xyes; then
+    LIBS="$LIBS -lhardware -lsync -lhybris-hwcomposerwindow -lEGL -lGLESv2"
+    AC_DEFINE(HAVE_LIBHARDWARE,[1],[libhardware library])
+fi
+
+AM_CONDITIONAL([HAVE_LIBHARDWARE], [test x$have_libhardware = xyes])
+
+AC_SUBST(moduledir)
 
 # Store the list of server defined optional extensions in REQUIRED_MODULES
 XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
@@ -62,7 +86,7 @@ PKG_CHECK_MODULES(XORG, [xorg-server >= 1.4.99.901] xproto fontsproto $REQUIRED_
 # Checks for libraries.
 
 
-DRIVER_NAME=dummy
+DRIVER_NAME=hwcomposer
 AC_SUBST([DRIVER_NAME])
 
 AC_CONFIG_FILES([

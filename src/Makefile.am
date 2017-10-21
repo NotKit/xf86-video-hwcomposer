@@ -27,13 +27,17 @@
 
 AM_CFLAGS = $(XORG_CFLAGS) $(PCIACCESS_CFLAGS)
 
-dummy_drv_la_LTLIBRARIES = dummy_drv.la
-dummy_drv_la_LDFLAGS = -module -avoid-version
-dummy_drv_la_LIBADD = $(XORG_LIBS)
-dummy_drv_ladir = @moduledir@/drivers
+hwcomposer_drv_la_LTLIBRARIES = hwcomposer_drv.la
+hwcomposer_drv_la_LDFLAGS = -module -avoid-version -lhardware -lsync
+hwcomposer_drv_la_LIBADD = $(XORG_LIBS)
+hwcomposer_drv_ladir = @moduledir@/drivers
 
-dummy_drv_la_SOURCES = \
+hwcomposer_drv_la_SOURCES = \
          compat-api.h \
          dummy_cursor.c \
          dummy_driver.c \
-         dummy.h
+         dummy.h \
+         hwcomposer.c \
+         hwcomposer.h \
+         renderer.c \
+         renderer.h
