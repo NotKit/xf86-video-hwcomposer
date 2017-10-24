@@ -11,6 +11,15 @@
 #endif
 #include <string.h>
 
+#include <android-config.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <hardware/hardware.h>
+#include <hardware/hwcomposer.h>
+#include <hybris/eglplatformcommon/hybris_nativebufferext.h>
+
 #include "compat-api.h"
 
 /* Supported chipsets */
@@ -36,6 +45,13 @@ typedef struct _color
     int blue;
 } dummy_colors;
 
+Bool hwc_hwcomposer_init(ScreenPtr pScreen);
+void hwc_hwcomposer_close(ScreenPtr pScreen);
+Bool hwc_init_hybris_native_buffer(ScreenPtr pScreen);
+Bool hwc_egl_renderer_init(ScreenPtr pScreen);
+void hwc_egl_renderer_close(ScreenPtr pScreen);
+void hwc_egl_renderer_update(ScreenPtr pScreen);
+
 typedef struct dummyRec 
 {
     /* options */
@@ -43,7 +59,7 @@ typedef struct dummyRec
     Bool swCursor;
     /* proc pointer */
     CloseScreenProcPtr CloseScreen;
-	CreateScreenResourcesProcPtr	CreateScreenResources;
+    CreateScreenResourcesProcPtr	CreateScreenResources;
     xf86CursorInfoPtr CursorInfo;
     ScreenBlockHandlerProcPtr BlockHandler;
 
@@ -58,8 +74,29 @@ typedef struct dummyRec
     DamagePtr damage;
     Bool dirty_enabled;
 
-	void *HWComposer_private;
-    void *EGLRenderer_private;
+    gralloc_module_t *gralloc;
+    alloc_device_t *alloc;
+
+    hwc_composer_device_1_t *hwcDevicePtr;
+    hwc_display_contents_1_t **hwcContents;
+    hwc_layer_1_t *fblayer;
+
+    PFNEGLHYBRISCREATENATIVEBUFFERPROC eglHybrisCreateNativeBuffer;
+    PFNEGLHYBRISLOCKNATIVEBUFFERPROC eglHybrisLockNativeBuffer;
+    PFNEGLHYBRISUNLOCKNATIVEBUFFERPROC eglHybrisUnlockNativeBuffer;
+    PFNEGLHYBRISRELEASENATIVEBUFFERPROC eglHybrisReleaseNativeBuffer;
+    PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
+    PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
+    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
+
+    EGLDisplay display;
+    EGLSurface surface;
+    EGLContext context;
+    GLuint rootTexture;
+
+    EGLClientBuffer buffer;
+    int stride;
+    EGLImageKHR image;
 } DUMMYRec, *DUMMYPtr;
 
 /* The privates of the DUMMY driver */
