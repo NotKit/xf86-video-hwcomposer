@@ -248,7 +248,7 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     if (dPtr->image == EGL_NO_IMAGE_KHR) {
-        dPtr->image = dPtr->eglCreateImageKHR(dPtr->display, dPtr->context, EGL_NATIVE_BUFFER_HYBRIS,
+        dPtr->image = dPtr->eglCreateImageKHR(dPtr->display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_HYBRIS,
                                             (EGLClientBuffer)dPtr->buffer, NULL);
         dPtr->glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, dPtr->image);
     }
