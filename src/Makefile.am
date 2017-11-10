@@ -28,7 +28,7 @@
 AM_CFLAGS = $(XORG_CFLAGS) $(PCIACCESS_CFLAGS)
 
 hwcomposer_drv_la_LTLIBRARIES = hwcomposer_drv.la
-hwcomposer_drv_la_LDFLAGS = -module -avoid-version -lhardware -lsync
+hwcomposer_drv_la_LDFLAGS = -module -avoid-version -lhardware -lsync -lepoxy
 hwcomposer_drv_la_LIBADD = $(XORG_LIBS)
 hwcomposer_drv_ladir = @moduledir@/drivers
 

@@ -12,10 +12,8 @@
 #include <string.h>
 
 #include <android-config.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#include <epoxy/gl.h>
+#include <epoxy/egl.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
 #include <hybris/eglplatformcommon/hybris_nativebufferext.h>

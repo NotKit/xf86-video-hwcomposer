@@ -6,8 +6,6 @@
 #include "xf86.h"
 
 #include <android-config.h>
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
