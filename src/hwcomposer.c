@@ -30,9 +30,8 @@ inline static uint32_t interpreted_version(hw_device_t *hwc_device)
 	return version;
 }
 
-Bool hwc_hwcomposer_init(ScreenPtr pScreen)
+Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 {
-	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	DUMMYPtr dPtr = DUMMYPTR(pScrn);
 	int err;
 
@@ -84,7 +83,7 @@ Bool hwc_hwcomposer_init(ScreenPtr pScreen)
 	hwcDevicePtr->getDisplayAttributes(hwcDevicePtr, 0,
 			configs[0], attributes, attr_values);
 
-	printf("width: %i height: %i\n", attr_values[0], attr_values[1]);
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "width: %i height: %i\n", attr_values[0], attr_values[1]);
 
 	size_t size = sizeof(hwc_display_contents_1_t) + 2 * sizeof(hwc_layer_1_t);
 	hwc_display_contents_1_t *list = (hwc_display_contents_1_t *) malloc(size);
@@ -93,7 +92,10 @@ Bool hwc_hwcomposer_init(ScreenPtr pScreen)
 
 	int counter = 0;
 	for (; counter < HWC_NUM_DISPLAY_TYPES; counter++)
-		dPtr->hwcContents[counter] = list;
+		dPtr->hwcContents[counter] = NULL;
+	// Assign the layer list only to the first display,
+	// otherwise HWC might freeze if others are disconnected
+	dPtr->hwcContents[0] = list;
 
 	hwc_layer_1_t *layer = &list->hwLayers[0];
 	memset(layer, 0, sizeof(hwc_layer_1_t));
@@ -164,6 +166,6 @@ Bool hwc_hwcomposer_init(ScreenPtr pScreen)
 	return TRUE;
 }
 
-void hwc_hwcomposer_close(ScreenPtr pScreen)
+void hwc_hwcomposer_close(ScrnInfoPtr pScrn)
 {
 }

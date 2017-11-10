@@ -43,11 +43,13 @@ typedef struct _color
     int blue;
 } dummy_colors;
 
-Bool hwc_hwcomposer_init(ScreenPtr pScreen);
-void hwc_hwcomposer_close(ScreenPtr pScreen);
-Bool hwc_init_hybris_native_buffer(ScreenPtr pScreen);
-Bool hwc_egl_renderer_init(ScreenPtr pScreen);
-void hwc_egl_renderer_close(ScreenPtr pScreen);
+Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn);
+void hwc_hwcomposer_close(ScrnInfoPtr pScrn);
+Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn);
+Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn);
+void hwc_egl_renderer_close(ScrnInfoPtr pScrn);
+void hwc_egl_renderer_screen_init(ScreenPtr pScreen);
+void hwc_egl_renderer_screen_close(ScreenPtr pScreen);
 void hwc_egl_renderer_update(ScreenPtr pScreen);
 
 typedef struct dummyRec 

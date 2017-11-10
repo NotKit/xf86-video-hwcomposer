@@ -429,6 +429,26 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     pScrn->memPhysBase = 0;
     pScrn->fbOffset = 0;
 
+    if (!hwc_hwcomposer_init(pScrn)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "failed to initialize HWComposer API and layers\n");
+        return FALSE;
+    }
+
+    if (!hwc_egl_renderer_init(pScrn)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "failed to initialize EGL renderer\n");
+            return FALSE;
+    }
+
+    if (!hwc_init_hybris_native_buffer(pScrn)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "failed to initialize libhybris native buffer EGL extension\n");
+        return FALSE;
+    }
+
+    dPtr->buffer = NULL;
+
     return TRUE;
 }
 #undef RETURN
@@ -531,14 +551,17 @@ CreateScreenResources(ScreenPtr pScreen)
                                       HYBRIS_USAGE_HW_COMPOSER|HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                       HYBRIS_PIXEL_FORMAT_RGBA_8888,
                                       &dPtr->stride, &dPtr->buffer);
-    printf("alloc: status=%d, stride=%d\n", err, dPtr->stride);
+
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "alloc: status=%d, stride=%d\n", err, dPtr->stride);
+
+    hwc_egl_renderer_screen_init(pScreen);
 
     err = dPtr->eglHybrisLockNativeBuffer(dPtr->buffer,
                                     HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                     0, 0, dPtr->stride, pScrn->virtualY, &pixels);
 
-    printf("gralloc lock returns %i\n", err);
-    printf("lock to vaddr %p\n", pixels);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "gralloc lock returns %i\n", err);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "lock to vaddr %p\n", pixels);
 
     if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
          FatalError("Couldn't adjust screen pixmap\n");
@@ -629,7 +652,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     pScreen->CreateScreenResources = CreateScreenResources;
 
     if (dPtr->swCursor)
-    xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Using Software Cursor.\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Using Software Cursor.\n");
 
     xf86SetBackingStore(pScreen);
     xf86SetSilkenMouse(pScreen);
@@ -672,30 +695,12 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     /* Report any unused options (only for the first generation) */
     if (serverGeneration == 1) {
-	xf86ShowUnusedOptions(pScrn->scrnIndex, pScrn->options);
+        xf86ShowUnusedOptions(pScrn->scrnIndex, pScrn->options);
     }
 
-	/* Wrap the current BlockHandler function */
-	dPtr->BlockHandler = pScreen->BlockHandler;
+    /* Wrap the current BlockHandler function */
+    dPtr->BlockHandler = pScreen->BlockHandler;
     pScreen->BlockHandler = DUMMYBlockHandler;
-
-	if (!hwc_hwcomposer_init(pScreen)) {
-		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-		           "failed to initialize HWComposer API and layers\n");
-		return FALSE;
-	}
-
-    if (!hwc_egl_renderer_init(pScreen)) {
-        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                    "failed to initialize EGL renderer\n");
-            return FALSE;
-    }
-
-    if (!hwc_init_hybris_native_buffer(pScreen)) {
-        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                    "failed to initialize libhybris native buffer EGL extension\n");
-        return FALSE;
-    }
 
     return TRUE;
 }
@@ -720,7 +725,20 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
-    free(pScreen->GetScreenPixmap(pScreen)->devPrivate.ptr);
+    if (dPtr->damage) {
+        DamageUnregister(dPtr->damage);
+        DamageDestroy(dPtr->damage);
+        dPtr->damage = NULL;
+    }
+
+    hwc_egl_renderer_screen_close(pScreen);
+
+    if (dPtr->buffer != NULL)
+    {
+        dPtr->eglHybrisUnlockNativeBuffer(dPtr->buffer);
+        dPtr->eglHybrisReleaseNativeBuffer(dPtr->buffer);
+        dPtr->buffer = NULL;
+    }
 
     if (dPtr->CursorInfo)
         xf86DestroyCursorInfoRec(dPtr->CursorInfo);

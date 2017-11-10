@@ -91,15 +91,14 @@ static const GLfloat textureVertices[] = {
 void present(void *user_data, struct ANativeWindow *window,
                                 struct ANativeWindowBuffer *buffer)
 {
-    ScreenPtr pScreen = (ScreenPtr)user_data;
-    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    ScrnInfoPtr pScrn = (ScrnInfoPtr)user_data;
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
     hwc_display_contents_1_t **contents = dPtr->hwcContents;
     hwc_layer_1_t *fblayer = dPtr->fblayer;
     hwc_composer_device_1_t *hwcdevice = dPtr->hwcDevicePtr;
 
-    printf("present callback called\n");
+    xf86DrvMsg(pScrn->scrnIndex, X_DEBUG, "present callback called\n");
 
     int oldretire = contents[0]->retireFenceFd;
     contents[0]->retireFenceFd = -1;
@@ -121,14 +120,13 @@ void present(void *user_data, struct ANativeWindow *window,
     }
 }
 
-Bool hwc_init_hybris_native_buffer(ScreenPtr pScreen)
+Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
 {
-    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
     if (strstr(eglQueryString(dPtr->display, EGL_EXTENSIONS), "EGL_HYBRIS_native_buffer") == NULL)
     {
-        xf86DrvMsg(pScreen->myNum, X_ERROR, "EGL_HYBRIS_native_buffer is missing. Make sure libhybris EGL implementation is used\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "EGL_HYBRIS_native_buffer is missing. Make sure libhybris EGL implementation is used\n");
         return FALSE;
     }
 
@@ -154,9 +152,8 @@ Bool hwc_init_hybris_native_buffer(ScreenPtr pScreen)
     assert(dPtr->glEGLImageTargetTexture2DOES != NULL);
 }
 
-Bool hwc_egl_renderer_init(ScreenPtr pScreen)
+Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
 {
-    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
     EGLDisplay display;
@@ -177,7 +174,7 @@ Bool hwc_egl_renderer_init(ScreenPtr pScreen)
     EGLBoolean rv;
     int err;
 
-    struct ANativeWindow *win = HWCNativeWindowCreate(1080, 1920, HAL_PIXEL_FORMAT_RGBA_8888, present, pScreen);
+    struct ANativeWindow *win = HWCNativeWindowCreate(1080, 1920, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
 
     display = eglGetDisplay(NULL);
     assert(eglGetError() == EGL_SUCCESS);
@@ -204,7 +201,7 @@ Bool hwc_egl_renderer_init(ScreenPtr pScreen)
 
     assert(eglMakeCurrent((EGLDisplay) display, surface, surface, context) == EGL_TRUE);
 
-    char *version = glGetString(GL_VERSION);
+    const char *version = glGetString(GL_VERSION);
     assert(version);
     printf("%s\n",version);
 
@@ -224,7 +221,7 @@ Bool hwc_egl_renderer_init(ScreenPtr pScreen)
     texture_loc = glGetUniformLocation ( shaderProgram , "texture" );
 
     if ( position_loc < 0  ||  texcoords_loc < 0 || texture_loc < 0 ) {
-        xf86DrvMsg(pScreen->myNum, X_ERROR, "EGLRenderer_Init: failed to get shader variables locations\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "EGLRenderer_Init: failed to get shader variables locations\n");
         return FALSE;
     }
 
@@ -236,12 +233,10 @@ Bool hwc_egl_renderer_init(ScreenPtr pScreen)
     return TRUE;
 }
 
-void hwc_egl_renderer_update(ScreenPtr pScreen)
+void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
-
-    glClear(GL_COLOR_BUFFER_BIT);
 
     glBindTexture(GL_TEXTURE_2D, dPtr->rootTexture);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -252,7 +247,16 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
                                             (EGLClientBuffer)dPtr->buffer, NULL);
         dPtr->glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, dPtr->image);
     }
+}
 
+void hwc_egl_renderer_update(ScreenPtr pScreen)
+{
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glBindTexture(GL_TEXTURE_2D, dPtr->rootTexture);
     glUniform1i(texture_loc, 0);
 
     glVertexAttribPointer(position_loc, 2, GL_FLOAT, 0, 0, squareVertices);
@@ -266,6 +270,15 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
     eglSwapBuffers (dPtr->display, dPtr->surface );  // get the rendered buffer to the screen
 }
 
-void hwc_egl_renderer_close(ScreenPtr pScreen)
+void hwc_egl_renderer_screen_close(ScreenPtr pScreen)
+{
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+
+    dPtr->eglDestroyImageKHR(dPtr->display, dPtr->image);
+    dPtr->image = EGL_NO_IMAGE_KHR;
+}
+
+void hwc_egl_renderer_close(ScrnInfoPtr pScrn)
 {
 }
