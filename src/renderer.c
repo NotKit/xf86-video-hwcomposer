@@ -52,16 +52,6 @@ GLuint load_shader(const char *shader_source, GLenum type)
     return shader;
 }
 
-
-GLfloat norm_x    =  0.0;
-GLfloat norm_y    =  0.0;
-GLfloat offset_x  =  0.0;
-GLfloat offset_y  =  0.0;
-GLfloat p1_pos_x  =  0.0;
-GLfloat p1_pos_y  =  0.0;
-
-//GLint phase_loc;
-//GLint offset_loc;
 GLint position_loc;
 GLint texcoords_loc;
 GLint texture_loc;
@@ -174,7 +164,7 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     EGLBoolean rv;
     int err;
 
-    struct ANativeWindow *win = HWCNativeWindowCreate(1080, 1920, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
+    struct ANativeWindow *win = HWCNativeWindowCreate(dPtr->hwcWidth, dPtr->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
 
     display = eglGetDisplay(NULL);
     assert(eglGetError() == EGL_SUCCESS);

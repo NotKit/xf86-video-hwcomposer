@@ -84,6 +84,8 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 			configs[0], attributes, attr_values);
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "width: %i height: %i\n", attr_values[0], attr_values[1]);
+	dPtr->hwcWidth = attr_values[0];
+	dPtr->hwcHeight = attr_values[1];
 
 	size_t size = sizeof(hwc_display_contents_1_t) + 2 * sizeof(hwc_layer_1_t);
 	hwc_display_contents_1_t *list = (hwc_display_contents_1_t *) malloc(size);

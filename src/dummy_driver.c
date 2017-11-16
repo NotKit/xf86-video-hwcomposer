@@ -393,14 +393,20 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     //xf86CrtcConfigInit(pScrn, &dummy_xf86crtc_config_funcs);
     //xf86CrtcSetSizeRange(pScrn, 8, 8, SHRT_MAX, SHRT_MAX);
 
+    if (!hwc_hwcomposer_init(pScrn)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "failed to initialize HWComposer API and layers\n");
+        return FALSE;
+    }
+
     /* Pick up size from the "Display" subsection if it exists */
     if (pScrn->display->virtualX) {
         pScrn->virtualX = pScrn->display->virtualX;
         pScrn->virtualY = pScrn->display->virtualY;
     } else {
-        /* Pick a "modern" screen resolution */
-        pScrn->virtualX = 1920;
-        pScrn->virtualY = 1080;
+        /* Pick rotated HWComposer screen resolution */
+        pScrn->virtualX = dPtr->hwcHeight;
+        pScrn->virtualY = dPtr->hwcWidth;
      }
     pScrn->displayWidth = pScrn->virtualX;
 
@@ -428,12 +434,6 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     /* We have no contiguous physical fb in physical memory */
     pScrn->memPhysBase = 0;
     pScrn->fbOffset = 0;
-
-    if (!hwc_hwcomposer_init(pScrn)) {
-        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                    "failed to initialize HWComposer API and layers\n");
-        return FALSE;
-    }
 
     if (!hwc_egl_renderer_init(pScrn)) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,

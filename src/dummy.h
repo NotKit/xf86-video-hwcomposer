@@ -81,6 +81,9 @@ typedef struct dummyRec
     hwc_display_contents_1_t **hwcContents;
     hwc_layer_1_t *fblayer;
 
+    int hwcWidth;
+    int hwcHeight;
+
     PFNEGLHYBRISCREATENATIVEBUFFERPROC eglHybrisCreateNativeBuffer;
     PFNEGLHYBRISLOCKNATIVEBUFFERPROC eglHybrisLockNativeBuffer;
     PFNEGLHYBRISUNLOCKNATIVEBUFFERPROC eglHybrisUnlockNativeBuffer;
