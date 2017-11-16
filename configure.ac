@@ -85,6 +85,14 @@ PKG_CHECK_MODULES(XORG, [xorg-server >= 1.4.99.901] xproto fontsproto $REQUIRED_
 
 # Checks for libraries.
 
+AC_ARG_ENABLE([glamor],
+    AS_HELP_STRING([--enable-glamor], [Enable experimental glamor support (requires patched Xorg server)]))
+
+AS_IF([test "x$enable_glamor" = "xyes"], [
+    AC_DEFINE(ENABLE_GLAMOR,[1],[enable glamor support])
+])
+
+AM_CONDITIONAL([ENABLE_GLAMOR], [test x$enable_glamor = xyes])
 
 DRIVER_NAME=hwcomposer
 AC_SUBST([DRIVER_NAME])

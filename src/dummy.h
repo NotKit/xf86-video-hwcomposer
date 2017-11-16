@@ -1,4 +1,3 @@
-
 /* All drivers should typically include these */
 #include "xf86.h"
 #include "xf86_OSproc.h"
@@ -12,6 +11,8 @@
 #include <string.h>
 
 #include <android-config.h>
+
+#define MESA_EGL_NO_X11_HEADERS 1
 #include <epoxy/gl.h>
 #include <epoxy/egl.h>
 #include <hardware/hardware.h>
@@ -73,6 +74,7 @@ typedef struct dummyRec
 
     DamagePtr damage;
     Bool dirty_enabled;
+    Bool glamor;
 
     gralloc_module_t *gralloc;
     alloc_device_t *alloc;
@@ -96,6 +98,7 @@ typedef struct dummyRec
     EGLSurface surface;
     EGLContext context;
     GLuint rootTexture;
+    GLuint shaderProgram;
 
     EGLClientBuffer buffer;
     int stride;

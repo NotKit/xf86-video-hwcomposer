@@ -32,8 +32,16 @@ const char vertex_src [] =
     "    textureCoordinate = texcoords.xy;\n"
     "}\n";
 
-
 const char fragment_src [] =
+    "varying highp vec2 textureCoordinate;\n"
+    "uniform sampler2D texture;\n"
+
+    "void main()\n"
+    "{\n"
+    "    gl_FragColor = texture2D(texture, textureCoordinate);\n"
+    "}\n";
+
+const char fragment_src_bgra [] =
     "varying highp vec2 textureCoordinate;\n"
     "uniform sampler2D texture;\n"
 
@@ -150,9 +158,15 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     EGLConfig ecfg;
     EGLint num_config;
     EGLint attr[] = {       // some attributes to set up our egl-interface
-        EGL_BUFFER_SIZE, 32,
-        EGL_RENDERABLE_TYPE,
-        EGL_OPENGL_ES2_BIT,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
+        EGL_DEPTH_SIZE, 24,
+        EGL_STENCIL_SIZE, 8,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
         EGL_NONE
     };
     EGLSurface surface;
@@ -195,30 +209,9 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     assert(version);
     printf("%s\n",version);
 
-    GLuint vertexShader   = load_shader ( vertex_src , GL_VERTEX_SHADER  );     // load vertex shader
-    GLuint fragmentShader = load_shader ( fragment_src , GL_FRAGMENT_SHADER );  // load fragment shader
-
-    GLuint shaderProgram  = glCreateProgram ();                 // create program object
-    glAttachShader ( shaderProgram, vertexShader );             // and attach both...
-    glAttachShader ( shaderProgram, fragmentShader );           // ... shaders to it
-
-    glLinkProgram ( shaderProgram );    // link the program
-    glUseProgram  ( shaderProgram );    // and select it for usage
-
-    //// now get the locations (kind of handle) of the shaders variables
-    position_loc  = glGetAttribLocation  ( shaderProgram , "position" );
-    texcoords_loc = glGetAttribLocation  ( shaderProgram , "texcoords" );
-    texture_loc = glGetUniformLocation ( shaderProgram , "texture" );
-
-    if ( position_loc < 0  ||  texcoords_loc < 0 || texture_loc < 0 ) {
-        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "EGLRenderer_Init: failed to get shader variables locations\n");
-        return FALSE;
-    }
-
     glGenTextures(1, &dPtr->rootTexture);
     dPtr->image = EGL_NO_IMAGE_KHR;
-
-    glClearColor (1., 1., 1., 1.);    // background color
+    dPtr->shaderProgram = 0;
 
     return TRUE;
 }
@@ -232,10 +225,36 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    if (dPtr->image == EGL_NO_IMAGE_KHR) {
+    if (!dPtr->glamor && dPtr->image == EGL_NO_IMAGE_KHR) {
         dPtr->image = dPtr->eglCreateImageKHR(dPtr->display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_HYBRIS,
                                             (EGLClientBuffer)dPtr->buffer, NULL);
         dPtr->glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, dPtr->image);
+    }
+
+    if (!dPtr->shaderProgram)
+    {
+        GLuint vertexShader = load_shader(vertex_src, GL_VERTEX_SHADER);     // load vertex shader
+        GLuint fragmentShader;
+
+        if (dPtr->glamor)
+            fragmentShader = load_shader(fragment_src ,GL_FRAGMENT_SHADER);  // load fragment shader
+        else
+            fragmentShader = load_shader(fragment_src_bgra, GL_FRAGMENT_SHADER);  // load fragment shader
+
+        GLuint shaderProgram  = dPtr->shaderProgram = glCreateProgram();          // create program object
+        glAttachShader ( shaderProgram, vertexShader );             // and attach both...
+        glAttachShader ( shaderProgram, fragmentShader );           // ... shaders to it
+
+        glLinkProgram ( shaderProgram );    // link the program
+
+        //// now get the locations (kind of handle) of the shaders variables
+        position_loc  = glGetAttribLocation  ( shaderProgram , "position" );
+        texcoords_loc = glGetAttribLocation  ( shaderProgram , "texcoords" );
+        texture_loc = glGetUniformLocation ( shaderProgram , "texture" );
+
+        if ( position_loc < 0  ||  texcoords_loc < 0 || texture_loc < 0 ) {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "EGLRenderer_Init: failed to get shader variables locations\n");
+        }
     }
 }
 
@@ -244,8 +263,14 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    if (dPtr->glamor) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, dPtr->hwcWidth, dPtr->hwcHeight);
+    }
 
+    glUseProgram(dPtr->shaderProgram);
+
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, dPtr->rootTexture);
     glUniform1i(texture_loc, 0);
 
@@ -257,6 +282,9 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+    glDisableVertexAttribArray(position_loc);
+    glDisableVertexAttribArray(texcoords_loc);
+
     eglSwapBuffers (dPtr->display, dPtr->surface );  // get the rendered buffer to the screen
 }
 
@@ -265,8 +293,10 @@ void hwc_egl_renderer_screen_close(ScreenPtr pScreen)
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
-    dPtr->eglDestroyImageKHR(dPtr->display, dPtr->image);
-    dPtr->image = EGL_NO_IMAGE_KHR;
+    if (dPtr->image != EGL_NO_IMAGE_KHR) {
+        dPtr->eglDestroyImageKHR(dPtr->display, dPtr->image);
+        dPtr->image = EGL_NO_IMAGE_KHR;
+    }
 }
 
 void hwc_egl_renderer_close(ScrnInfoPtr pScrn)

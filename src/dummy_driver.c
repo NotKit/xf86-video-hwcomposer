@@ -33,6 +33,12 @@
  */
 #include "dummy.h"
 
+#ifdef ENABLE_GLAMOR
+#define GLAMOR_FOR_XORG 1
+#include <glamor.h>
+Bool hwc_glamor_egl_init(ScrnInfoPtr scrn, EGLDisplay display, EGLContext context, EGLSurface surface);
+#endif
+
 /* These need to be checked */
 #include <X11/X.h>
 #include <X11/Xproto.h>
@@ -97,11 +103,13 @@ static SymTabRec DUMMYChipsets[] = {
 };
 
 typedef enum {
-    OPTION_SW_CURSOR
+    OPTION_SW_CURSOR,
+    OPTION_ACCEL_METHOD
 } DUMMYOpts;
 
 static const OptionInfoRec DUMMYOptions[] = {
     { OPTION_SW_CURSOR, "SWcursor", OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_ACCEL_METHOD, "AccelMethod", OPTV_STRING, {0}, FALSE},
     { -1,               NULL,       OPTV_NONE,    {0}, FALSE }
 };
 
@@ -299,6 +307,37 @@ DUMMYProbe(DriverPtr drv, int flags)
     return foundScreen;
 }
 
+#ifdef ENABLE_GLAMOR
+static void
+try_enable_glamor(ScrnInfoPtr pScrn)
+{
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+    const char *accel_method_str = xf86GetOptValString(dPtr->Options,
+                                                       OPTION_ACCEL_METHOD);
+    Bool do_glamor = (!accel_method_str ||
+                      strcmp(accel_method_str, "glamor") == 0);
+
+    if (!do_glamor) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "glamor disabled\n");
+        return;
+    }
+
+    if (xf86LoadSubModule(pScrn, GLAMOR_EGL_MODULE_NAME)) {
+        //if (hwc_glamor_egl_init(pScrn, dPtr->display, dPtr->context, dPtr->surface)) {
+        if (hwc_glamor_egl_init(pScrn, dPtr->display, dPtr->context, dPtr->surface)) {
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor initialized\n");
+            dPtr->glamor = TRUE;
+        } else {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                       "glamor initialization failed\n");
+        }
+    } else {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                   "Failed to load glamor module.\n");
+    }
+}
+#endif
+
 # define RETURN \
     { DUMMYFreeRec(pScrn);\
 			    return FALSE;\
@@ -449,6 +488,11 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
     dPtr->buffer = NULL;
 
+    dPtr->glamor = FALSE;
+#ifdef ENABLE_GLAMOR
+    try_enable_glamor(pScrn);
+#endif
+
     return TRUE;
 }
 #undef RETURN
@@ -524,8 +568,10 @@ static void DUMMYBlockHandler(ScreenPtr pScreen, void *timeout)
                         HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
                         0, 0, dPtr->stride, pScrn->virtualY, &pixels);
 
-        if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
-            FatalError("Couldn't adjust screen pixmap\n");
+        if (!dPtr->glamor) {
+            if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
+                FatalError("Couldn't adjust screen pixmap\n");
+        }
 
         DamageEmpty(dPtr->damage);
     }
@@ -547,6 +593,19 @@ CreateScreenResources(ScreenPtr pScreen)
 
     rootPixmap = pScreen->GetScreenPixmap(pScreen);
 
+#ifdef ENABLE_GLAMOR
+    if (dPtr->glamor) {
+        pScreen->DestroyPixmap(rootPixmap);
+
+        rootPixmap = glamor_create_pixmap(pScreen,
+                                            pScreen->width,
+                                            pScreen->height,
+                                            pScreen->rootDepth,
+                                            GLAMOR_CREATE_NO_LARGE);
+        pScreen->SetScreenPixmap(rootPixmap);
+    }
+#endif
+
     err = dPtr->eglHybrisCreateNativeBuffer(pScrn->virtualX, pScrn->virtualY,
                                       HYBRIS_USAGE_HW_COMPOSER|HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                       HYBRIS_PIXEL_FORMAT_RGBA_8888,
@@ -556,6 +615,11 @@ CreateScreenResources(ScreenPtr pScreen)
 
     hwc_egl_renderer_screen_init(pScreen);
 
+#ifdef ENABLE_GLAMOR
+    if (dPtr->glamor)
+        dPtr->rootTexture = glamor_get_pixmap_texture(rootPixmap);
+#endif
+
     err = dPtr->eglHybrisLockNativeBuffer(dPtr->buffer,
                                     HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                     0, 0, dPtr->stride, pScrn->virtualY, &pixels);
@@ -563,8 +627,10 @@ CreateScreenResources(ScreenPtr pScreen)
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "gralloc lock returns %i\n", err);
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "lock to vaddr %p\n", pixels);
 
-    if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
-         FatalError("Couldn't adjust screen pixmap\n");
+    if (!dPtr->glamor) {
+        if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
+            FatalError("Couldn't adjust screen pixmap\n");
+    }
 
     dPtr->damage = DamageCreate(NULL, NULL, DamageReportNone, TRUE,
                                 pScreen, rootPixmap);
@@ -645,6 +711,14 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     /* must be after RGB ordering fixed */
     fbPictureInit(pScreen, 0, 0);
+
+#ifdef ENABLE_GLAMOR
+    if (dPtr->glamor && !glamor_init(pScreen, GLAMOR_USE_EGL_SCREEN)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "Failed to initialize glamor at ScreenInit() time.\n");
+        return FALSE;
+    }
+#endif
 
     xf86SetBlackWhitePixels(pScreen);
 
