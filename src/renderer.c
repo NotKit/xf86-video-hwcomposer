@@ -104,10 +104,10 @@ void present(void *user_data, struct ANativeWindow *window,
     fblayer->handle = buffer->handle;
     fblayer->acquireFenceFd = HWCNativeBufferGetFence(buffer);
     fblayer->releaseFenceFd = -1;
-    int err = hwcdevice->prepare(hwcdevice, HWC_NUM_DISPLAY_TYPES, contents);
+    int err = hwcdevice->prepare(hwcdevice, dPtr->hwc_num_displays, contents);
     assert(err == 0);
 
-    err = hwcdevice->set(hwcdevice, HWC_NUM_DISPLAY_TYPES, contents);
+    err = hwcdevice->set(hwcdevice, dPtr->hwc_num_displays, contents);
     // in android surfaceflinger ignores the return value as not all display types may be supported
     HWCNativeBufferSetFence(buffer, fblayer->releaseFenceFd);
 
@@ -115,6 +115,34 @@ void present(void *user_data, struct ANativeWindow *window,
     {
         sync_wait(oldretire, -1);
         close(oldretire);
+    }
+}
+
+void hwc_v1_0_swapBuffers(ScrnInfoPtr pScrn, EGLDisplay display, EGLSurface surface)
+{
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+
+    hwc_display_contents_1_t **contents = dPtr->hwcContents;
+    hwc_composer_device_1_t *hwcdevice = dPtr->hwcDevicePtr;
+
+    xf86DrvMsg(pScrn->scrnIndex, X_DEBUG, "hwc_v1_0_swapBuffers\n");
+
+    contents[0]->dpy = EGL_NO_DISPLAY;
+    contents[0]->sur = EGL_NO_SURFACE;
+    hwcdevice->prepare(hwcdevice, dPtr->hwc_num_displays, contents);
+
+    // (dpy, sur) is the target of SurfaceFlinger's OpenGL ES composition for
+    // HWC_DEVICE_VERSION_1_0. They aren't relevant to prepare. The set call
+    // should commit this surface atomically to the display along with any
+    // overlay layers.
+    contents[0]->dpy = display;
+    contents[0]->sur = surface;
+    hwcdevice->set(hwcdevice, dPtr->hwc_num_displays, contents);
+
+    if (contents[0]->retireFenceFd != -1) {
+        sync_wait(contents[0]->retireFenceFd, -1);
+        close(contents[0]->retireFenceFd);
+        contents[0]->retireFenceFd = -1;
     }
 }
 
@@ -178,7 +206,10 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     EGLBoolean rv;
     int err;
 
-    struct ANativeWindow *win = HWCNativeWindowCreate(dPtr->hwcWidth, dPtr->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
+    struct ANativeWindow *win = NULL;
+
+    if (dPtr->hwc_version != HWC_DEVICE_API_VERSION_1_0)
+        win = HWCNativeWindowCreate(dPtr->hwcWidth, dPtr->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
 
     display = eglGetDisplay(NULL);
     assert(eglGetError() == EGL_SUCCESS);
@@ -285,7 +316,10 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
     glDisableVertexAttribArray(position_loc);
     glDisableVertexAttribArray(texcoords_loc);
 
-    eglSwapBuffers (dPtr->display, dPtr->surface );  // get the rendered buffer to the screen
+    if (dPtr->hwc_version != HWC_DEVICE_API_VERSION_1_0)
+        eglSwapBuffers (dPtr->display, dPtr->surface );  // get the rendered buffer to the screen
+    else
+        hwc_v1_0_swapBuffers(pScrn, dPtr->display, dPtr->surface);
 }
 
 void hwc_egl_renderer_screen_close(ScreenPtr pScreen)

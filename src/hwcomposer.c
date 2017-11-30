@@ -42,8 +42,9 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 	dPtr->gralloc = (gralloc_module_t*) module;
 	err = gralloc_open((const hw_module_t *) dPtr->gralloc, &dPtr->alloc);
 
-	framebuffer_device_t* fbDev = NULL;
-	framebuffer_open(module, &fbDev);
+	/* Some older devices require framebuffer module to be opened before hwcomposer,
+	 * rely on EGL_PLATFORM=fbdev to do this if needed */
+	eglGetDisplay(EGL_DEFAULT_DISPLAY);
 
 	hw_module_t *hwcModule = 0;
 
@@ -57,7 +58,7 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 	dPtr->hwcDevicePtr = hwcDevicePtr;
 	hw_device_t *hwcDevice = &hwcDevicePtr->common;
 
-	uint32_t hwc_version = interpreted_version(hwcDevice);
+	uint32_t hwc_version = dPtr-> hwc_version = interpreted_version(hwcDevice);
 
 #ifdef HWC_DEVICE_API_VERSION_1_4
 	if (hwc_version == HWC_DEVICE_API_VERSION_1_4) {
@@ -73,15 +74,22 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 
 	uint32_t configs[5];
 	size_t numConfigs = 5;
-
-	err = hwcDevicePtr->getDisplayConfigs(hwcDevicePtr, 0, configs, &numConfigs);
-	assert (err == 0);
-
-	int32_t attr_values[2];
+    int32_t attr_values[2];
 	uint32_t attributes[] = { HWC_DISPLAY_WIDTH, HWC_DISPLAY_HEIGHT, HWC_DISPLAY_NO_ATTRIBUTE };
 
-	hwcDevicePtr->getDisplayAttributes(hwcDevicePtr, 0,
-			configs[0], attributes, attr_values);
+    if (hwc_version != HWC_DEVICE_API_VERSION_1_0) {
+        err = hwcDevicePtr->getDisplayConfigs(hwcDevicePtr, 0, configs, &numConfigs);
+        assert (err == 0);
+
+        hwcDevicePtr->getDisplayAttributes(hwcDevicePtr, 0,
+                configs[0], attributes, attr_values);
+
+        dPtr->hwc_num_displays = HWC_NUM_DISPLAY_TYPES;
+    } else {
+        attr_values[0] = 540;
+        attr_values[1] = 960;
+        dPtr->hwc_num_displays = 1;
+    }
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "width: %i height: %i\n", attr_values[0], attr_values[1]);
 	dPtr->hwcWidth = attr_values[0];
@@ -89,11 +97,11 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 
 	size_t size = sizeof(hwc_display_contents_1_t) + 2 * sizeof(hwc_layer_1_t);
 	hwc_display_contents_1_t *list = (hwc_display_contents_1_t *) malloc(size);
-	dPtr->hwcContents = (hwc_display_contents_1_t **) malloc(HWC_NUM_DISPLAY_TYPES * sizeof(hwc_display_contents_1_t *));
+	dPtr->hwcContents = (hwc_display_contents_1_t **) malloc(dPtr->hwc_num_displays * sizeof(hwc_display_contents_1_t *));
 	const hwc_rect_t r = { 0, 0, attr_values[0], attr_values[1] };
 
 	int counter = 0;
-	for (; counter < HWC_NUM_DISPLAY_TYPES; counter++)
+	for (; counter < dPtr->hwc_num_displays; counter++)
 		dPtr->hwcContents[counter] = NULL;
 	// Assign the layer list only to the first display,
 	// otherwise HWC might freeze if others are disconnected
