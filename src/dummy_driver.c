@@ -38,6 +38,9 @@
 #include <glamor.h>
 Bool hwc_glamor_egl_init(ScrnInfoPtr scrn, EGLDisplay display, EGLContext context, EGLSurface surface);
 #endif
+#ifdef ENABLE_DRIHYBRIS
+#include <drihybris.h>
+#endif
 
 /* These need to be checked */
 #include <X11/X.h>
@@ -335,6 +338,13 @@ try_enable_glamor(ScrnInfoPtr pScrn)
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                    "Failed to load glamor module.\n");
     }
+#ifdef ENABLE_DRIHYBRIS
+    if (xf86LoadSubModule(pScrn, "drihybris"))
+    {
+        dPtr->drihybris = TRUE;
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "drihybris initialized\n");
+    }
+#endif
 }
 #endif
 
@@ -489,6 +499,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     dPtr->buffer = NULL;
 
     dPtr->glamor = FALSE;
+    dPtr->drihybris = FALSE;
 #ifdef ENABLE_GLAMOR
     try_enable_glamor(pScrn);
 #endif
@@ -775,6 +786,17 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     /* Wrap the current BlockHandler function */
     dPtr->BlockHandler = pScreen->BlockHandler;
     pScreen->BlockHandler = DUMMYBlockHandler;
+
+#ifdef ENABLE_DRIHYBRIS
+    if (dPtr->drihybris) {
+        drihybris_extension_init();
+
+        if (!hwc_present_screen_init(pScreen)) {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                       "Failed to initialize the Present extension.\n");
+        }
+    }
+#endif
 
     return TRUE;
 }

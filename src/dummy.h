@@ -52,6 +52,7 @@ void hwc_egl_renderer_close(ScrnInfoPtr pScrn);
 void hwc_egl_renderer_screen_init(ScreenPtr pScreen);
 void hwc_egl_renderer_screen_close(ScreenPtr pScreen);
 void hwc_egl_renderer_update(ScreenPtr pScreen);
+Bool hwc_present_screen_init(ScreenPtr pScreen);
 
 typedef struct dummyRec 
 {
@@ -75,6 +76,7 @@ typedef struct dummyRec
     DamagePtr damage;
     Bool dirty_enabled;
     Bool glamor;
+    Bool drihybris;
 
     gralloc_module_t *gralloc;
     alloc_device_t *alloc;

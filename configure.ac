@@ -51,17 +51,14 @@ AC_ARG_WITH(xorg-module-dir,
                            [Default xorg module directory [[default=$libdir/xorg/modules]]]),
             [moduledir="$withval"],
             [moduledir="$libdir/xorg/modules"])
-AC_ARG_ENABLE(pciaccess,     AS_HELP_STRING([--enable-pciaccess],
-                             [Enable use of libpciaccess (default: disabled)]),
-			     [PCIACCESS=$enableval], [PCIACCESS=no])
+AC_SUBST(moduledir)
 
 # Store the list of server defined optional extensions in REQUIRED_MODULES
 XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
 XORG_DRIVER_CHECK_EXT(RENDER, renderproto)
-XORG_DRIVER_CHECK_EXT(XV, videoproto)
 
 # Obtain compiler/linker options for the driver dependencies
-PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901 xproto fontsproto xf86driproto libdrm pixman-1 $REQUIRED_MODULES])
+PKG_CHECK_MODULES(XORG, [xorg-server >= 1.4.99.901] xproto fontsproto $REQUIRED_MODULES)
 
 # Checks for libraries.
 
@@ -74,16 +71,14 @@ fi
 
 AM_CONDITIONAL([HAVE_LIBHARDWARE], [test x$have_libhardware = xyes])
 
-AC_SUBST(moduledir)
+AC_ARG_ENABLE([drihybris],
+    AS_HELP_STRING([--enable-drihybris], [Enable DRIHYBRIS support]))
 
-# Store the list of server defined optional extensions in REQUIRED_MODULES
-XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
-XORG_DRIVER_CHECK_EXT(RENDER, renderproto)
+if test "x$enable_drihybris" = xyes; then
+    AC_DEFINE(ENABLE_DRIHYBRIS,[1],[Enable DRIHYBRIS driver support])
+fi
 
-# Obtain compiler/linker options for the driver dependencies
-PKG_CHECK_MODULES(XORG, [xorg-server >= 1.4.99.901] xproto fontsproto $REQUIRED_MODULES)
-
-# Checks for libraries.
+AM_CONDITIONAL([ENABLE_DRIHYBRIS], [test x$enable_drihybris = xyes])
 
 AC_ARG_ENABLE([glamor],
     AS_HELP_STRING([--enable-glamor], [Enable experimental glamor support (requires patched Xorg server)]))
