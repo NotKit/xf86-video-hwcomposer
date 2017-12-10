@@ -618,7 +618,8 @@ CreateScreenResources(ScreenPtr pScreen)
 #endif
 
     err = dPtr->eglHybrisCreateNativeBuffer(pScrn->virtualX, pScrn->virtualY,
-                                      HYBRIS_USAGE_HW_COMPOSER|HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
+                                      HYBRIS_USAGE_HW_TEXTURE |
+                                      HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                       HYBRIS_PIXEL_FORMAT_RGBA_8888,
                                       &dPtr->stride, &dPtr->buffer);
 
