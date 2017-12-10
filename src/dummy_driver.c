@@ -36,7 +36,6 @@
 #ifdef ENABLE_GLAMOR
 #define GLAMOR_FOR_XORG 1
 #include <glamor.h>
-Bool hwc_glamor_egl_init(ScrnInfoPtr scrn, EGLDisplay display, EGLContext context, EGLSurface surface);
 #endif
 #ifdef ENABLE_DRIHYBRIS
 #include <drihybris.h>
@@ -325,18 +324,18 @@ try_enable_glamor(ScrnInfoPtr pScrn)
         return;
     }
 
-    if (xf86LoadSubModule(pScrn, GLAMOR_EGL_MODULE_NAME)) {
+    if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
         //if (hwc_glamor_egl_init(pScrn, dPtr->display, dPtr->context, dPtr->surface)) {
         if (hwc_glamor_egl_init(pScrn, dPtr->display, dPtr->context, dPtr->surface)) {
-            xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor initialized\n");
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor-hybris initialized\n");
             dPtr->glamor = TRUE;
         } else {
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                       "glamor initialization failed\n");
+                       "glamor-hybris initialization failed\n");
         }
     } else {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                   "Failed to load glamor module.\n");
+                   "Failed to load glamor-hybris module.\n");
     }
 #ifdef ENABLE_DRIHYBRIS
     if (xf86LoadSubModule(pScrn, "drihybris"))
