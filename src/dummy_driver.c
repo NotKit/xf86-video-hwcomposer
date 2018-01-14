@@ -35,7 +35,7 @@
 
 #ifdef ENABLE_GLAMOR
 #define GLAMOR_FOR_XORG 1
-#include <glamor.h>
+#include <glamor-hybris.h>
 #endif
 #ifdef ENABLE_DRIHYBRIS
 #include <drihybris.h>

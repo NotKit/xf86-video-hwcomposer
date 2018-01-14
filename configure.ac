@@ -80,10 +80,10 @@ fi
 
 AM_CONDITIONAL([ENABLE_DRIHYBRIS], [test x$enable_drihybris = xyes])
 
-AC_ARG_ENABLE([glamor],
-    AS_HELP_STRING([--enable-glamor], [Enable experimental glamor support (requires patched Xorg server)]))
+AC_ARG_ENABLE([glamor-hybris],
+    AS_HELP_STRING([--enable-glamor-hybris], [Enable experimental glamor support (requires modified glamor-hybris)]))
 
-AS_IF([test "x$enable_glamor" = "xyes"], [
+AS_IF([test "x$enable_glamor_hybris" = "xyes"], [
     AC_DEFINE(ENABLE_GLAMOR,[1],[enable glamor support])
 ])
 
