@@ -40,4 +40,5 @@ hwcomposer_drv_la_SOURCES = \
          hwcomposer.h \
          present.c \
          renderer.c \
-         renderer.h
+         renderer.h \
+         vblank.c
