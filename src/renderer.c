@@ -64,14 +64,6 @@ GLint position_loc;
 GLint texcoords_loc;
 GLint texture_loc;
 
-const float vertexArray[] = {
-    0.0,  1.0,  0.0,
-    -1.,  0.0,  0.0,
-    0.0, -1.0,  0.0,
-    1.,  0.0,  0.0,
-    0.0,  1.,  0.0
-};
-
 static const GLfloat squareVertices[] = {
     -1.0f, -1.0f,
     1.0f, -1.0f,
