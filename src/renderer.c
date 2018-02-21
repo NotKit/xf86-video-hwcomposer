@@ -21,6 +21,8 @@
 
 #include "driver.h"
 
+#define ROTATE_270 1
+
 const char vertex_src [] =
     "attribute vec4 position;\n"
     "attribute vec4 texcoords;\n"
@@ -71,12 +73,21 @@ static const GLfloat squareVertices[] = {
     1.0f,  1.0f,
 };
 
+#ifndef ROTATE_270
 static const GLfloat textureVertices[] = {
     1.0f, 1.0f,
     1.0f, 0.0f,
     0.0f,  1.0f,
     0.0f,  0.0f,
 };
+#else
+static const GLfloat textureVertices[] = {
+    0.0f,  0.0f,
+    0.0f,  1.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f
+};
+#endif
 
 void present(void *user_data, struct ANativeWindow *window,
                                 struct ANativeWindowBuffer *buffer)
