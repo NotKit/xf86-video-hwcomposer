@@ -21,20 +21,10 @@
 
 #include "compat-api.h"
 
-/* Supported chipsets */
-typedef enum {
-    DUMMY_CHIP
-} DUMMYType;
-
 /* function prototypes */
 
-extern Bool DUMMYSwitchMode(SWITCH_MODE_ARGS_DECL);
-extern void DUMMYAdjustFrame(ADJUST_FRAME_ARGS_DECL);
-
-/* in dummy_cursor.c */
-extern Bool DUMMYCursorInit(ScreenPtr pScrn);
-extern void DUMMYShowCursor(ScrnInfoPtr pScrn);
-extern void DUMMYHideCursor(ScrnInfoPtr pScrn);
+extern Bool SwitchMode(SWITCH_MODE_ARGS_DECL);
+extern void AdjustFrame(ADJUST_FRAME_ARGS_DECL);
 
 /* globals */
 typedef struct _color
@@ -54,7 +44,7 @@ void hwc_egl_renderer_screen_close(ScreenPtr pScreen);
 void hwc_egl_renderer_update(ScreenPtr pScreen);
 Bool hwc_present_screen_init(ScreenPtr pScreen);
 
-typedef struct dummyRec 
+typedef struct HWCRec
 {
     /* options */
     OptionInfoPtr Options;
@@ -64,10 +54,6 @@ typedef struct dummyRec
     CreateScreenResourcesProcPtr	CreateScreenResources;
     xf86CursorInfoPtr CursorInfo;
     ScreenBlockHandlerProcPtr BlockHandler;
-
-    Bool DummyHWCursorShown;
-    int cursorX, cursorY;
-    int cursorFG, cursorBG;
 
     dummy_colors colors[1024];
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
@@ -105,8 +91,8 @@ typedef struct dummyRec
     EGLClientBuffer buffer;
     int stride;
     EGLImageKHR image;
-} DUMMYRec, *DUMMYPtr;
+} HWCRec, *HWCPtr;
 
-/* The privates of the DUMMY driver */
-#define DUMMYPTR(p)	((DUMMYPtr)((p)->driverPrivate))
+/* The privates of the hwcomposer driver */
+#define HWCPTR(p)	((HWCPtr)((p)->driverPrivate))
 

@@ -27,7 +27,7 @@
 #include <xf86.h>
 #include <present.h>
 
-#include "dummy.h"
+#include "driver.h"
 
 static present_screen_info_rec hwcomposer_present_screen_info = {
     .version = PRESENT_SCREEN_INFO_VERSION

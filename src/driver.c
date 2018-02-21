@@ -31,7 +31,7 @@
 /*
  * Driver data structures.
  */
-#include "dummy.h"
+#include "driver.h"
 
 #ifdef ENABLE_GLAMOR
 #define GLAMOR_FOR_XORG 1
@@ -48,31 +48,30 @@
 #include "servermd.h"
 
 /* Mandatory functions */
-static const OptionInfoRec *	DUMMYAvailableOptions(int chipid, int busid);
-static void     DUMMYIdentify(int flags);
-static Bool     DUMMYProbe(DriverPtr drv, int flags);
-static Bool     DUMMYPreInit(ScrnInfoPtr pScrn, int flags);
-static Bool     DUMMYScreenInit(SCREEN_INIT_ARGS_DECL);
-static Bool     DUMMYEnterVT(VT_FUNC_ARGS_DECL);
-static void     DUMMYLeaveVT(VT_FUNC_ARGS_DECL);
-static Bool     DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL);
-static Bool     DUMMYCreateWindow(WindowPtr pWin);
-static void     DUMMYFreeScreen(FREE_SCREEN_ARGS_DECL);
-static ModeStatus DUMMYValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode,
+static const OptionInfoRec *	AvailableOptions(int chipid, int busid);
+static void     Identify(int flags);
+static Bool     Probe(DriverPtr drv, int flags);
+static Bool     PreInit(ScrnInfoPtr pScrn, int flags);
+static Bool     ScreenInit(SCREEN_INIT_ARGS_DECL);
+static Bool     EnterVT(VT_FUNC_ARGS_DECL);
+static void     LeaveVT(VT_FUNC_ARGS_DECL);
+static Bool     CloseScreen(CLOSE_SCREEN_ARGS_DECL);
+static void     FreeScreen(FREE_SCREEN_ARGS_DECL);
+static ModeStatus ValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode,
                                  Bool verbose, int flags);
-static Bool	DUMMYSaveScreen(ScreenPtr pScreen, int mode);
+static Bool	SaveScreen(ScreenPtr pScreen, int mode);
 
 /* Internally used functions */
-static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+static Bool	hwc_driver_func(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
                             pointer ptr);
 
-#define DUMMY_VERSION 4000
-#define DUMMY_NAME "hwcomposer"
-#define DUMMY_DRIVER_NAME "hwcomposer"
+#define HWC_VERSION 1
+#define HWC_NAME "hwcomposer"
+#define HWC_DRIVER_NAME "hwcomposer"
 
-#define DUMMY_MAJOR_VERSION PACKAGE_VERSION_MAJOR
-#define DUMMY_MINOR_VERSION PACKAGE_VERSION_MINOR
-#define DUMMY_PATCHLEVEL PACKAGE_VERSION_PATCHLEVEL
+#define HWC_MAJOR_VERSION PACKAGE_VERSION_MAJOR
+#define HWC_MINOR_VERSION PACKAGE_VERSION_MINOR
+#define HWC_PATCHLEVEL PACKAGE_VERSION_PATCHLEVEL
 
 /*
  * This is intentionally screen-independent.  It indicates the binding
@@ -88,30 +87,28 @@ static int pix24bpp = 0;
  * an upper-case version of the driver name.
  */
 
-_X_EXPORT DriverRec HWCOMPOSER = {
-    DUMMY_VERSION,
-    DUMMY_DRIVER_NAME,
-    DUMMYIdentify,
-    DUMMYProbe,
-    DUMMYAvailableOptions,
+_X_EXPORT DriverRec hwcomposer = {
+    HWC_VERSION,
+    HWC_DRIVER_NAME,
+    Identify,
+    Probe,
+    AvailableOptions,
     NULL,
     0,
-    dummyDriverFunc
+    hwc_driver_func
 };
 
-static SymTabRec DUMMYChipsets[] = {
-    { DUMMY_CHIP, "hwcomposer" },
+static SymTabRec Chipsets[] = {
+    { 0, "hwcomposer" },
     { -1,         NULL }
 };
 
 typedef enum {
-    OPTION_SW_CURSOR,
     OPTION_ACCEL_METHOD,
     OPTION_EGL_PLATFORM
-} DUMMYOpts;
+} Opts;
 
-static const OptionInfoRec DUMMYOptions[] = {
-    { OPTION_SW_CURSOR, "SWcursor", OPTV_BOOLEAN, {0}, FALSE },
+static const OptionInfoRec Options[] = {
     { OPTION_ACCEL_METHOD, "AccelMethod", OPTV_STRING, {0}, FALSE},
     { OPTION_EGL_PLATFORM, "EGLPlatform", OPTV_STRING, {0}, FALSE},
     { -1,               NULL,       OPTV_NONE,    {0}, FALSE }
@@ -119,7 +116,7 @@ static const OptionInfoRec DUMMYOptions[] = {
 
 #ifdef XFree86LOADER
 
-static MODULESETUPPROTO(dummySetup);
+static MODULESETUPPROTO(Setup);
 
 static XF86ModuleVersionInfo hwcomposerVersRec =
 {
@@ -128,7 +125,7 @@ static XF86ModuleVersionInfo hwcomposerVersRec =
 	MODINFOSTRING1,
 	MODINFOSTRING2,
 	XORG_VERSION_CURRENT,
-	DUMMY_MAJOR_VERSION, DUMMY_MINOR_VERSION, DUMMY_PATCHLEVEL,
+	HWC_MAJOR_VERSION, HWC_MINOR_VERSION, HWC_PATCHLEVEL,
 	ABI_CLASS_VIDEODRV,
 	ABI_VIDEODRV_VERSION,
 	MOD_CLASS_VIDEODRV,
@@ -139,16 +136,16 @@ static XF86ModuleVersionInfo hwcomposerVersRec =
  * This is the module init data.
  * Its name has to be the driver name followed by ModuleData
  */
-_X_EXPORT XF86ModuleData hwcomposerModuleData = { &hwcomposerVersRec, dummySetup, NULL };
+_X_EXPORT XF86ModuleData hwcomposerModuleData = { &hwcomposerVersRec, Setup, NULL };
 
 static pointer
-dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
+Setup(pointer module, pointer opts, int *errmaj, int *errmin)
 {
     static Bool setupDone = FALSE;
 
     if (!setupDone) {
         setupDone = TRUE;
-        xf86AddDriver(&HWCOMPOSER, module, HaveDriverFuncs);
+        xf86AddDriver(&hwcomposer, module, HaveDriverFuncs);
 
         /*
         * Modules that this driver always requires can be loaded here
@@ -186,7 +183,7 @@ static void ConstructFakeDisplayMode(ScrnInfoPtr pScrn, DisplayModePtr mode)
 }
 
 static Bool
-dummy_xf86crtc_resize(ScrnInfoPtr pScrn, int width, int height)
+hwc_xf86crtc_resize(ScrnInfoPtr pScrn, int width, int height)
 {
     ScreenPtr pScreen = pScrn->pScreen;
     PixmapPtr rootPixmap = pScreen->GetScreenPixmap(pScreen);
@@ -213,22 +210,22 @@ dummy_xf86crtc_resize(ScrnInfoPtr pScrn, int width, int height)
     return TRUE;
 }
 
-static const xf86CrtcConfigFuncsRec dummy_xf86crtc_config_funcs = {
-    dummy_xf86crtc_resize
+static const xf86CrtcConfigFuncsRec hwc_xf86crtc_config_funcs = {
+    hwc_xf86crtc_resize
 };
 
 static Bool
-DUMMYGetRec(ScrnInfoPtr pScrn)
+GetRec(ScrnInfoPtr pScrn)
 {
     /*
-     * Allocate a DUMMYRec, and hook it into pScrn->driverPrivate.
+     * Allocate a HWCRec, and hook it into pScrn->driverPrivate.
      * pScrn->driverPrivate is initialised to NULL, so we can check if
      * the allocation has already been done.
      */
     if (pScrn->driverPrivate != NULL)
         return TRUE;
 
-    pScrn->driverPrivate = xnfcalloc(sizeof(DUMMYRec), 1);
+    pScrn->driverPrivate = xnfcalloc(sizeof(HWCRec), 1);
 
     if (pScrn->driverPrivate == NULL)
         return FALSE;
@@ -236,7 +233,7 @@ DUMMYGetRec(ScrnInfoPtr pScrn)
 }
 
 static void
-DUMMYFreeRec(ScrnInfoPtr pScrn)
+FreeRec(ScrnInfoPtr pScrn)
 {
     if (pScrn->driverPrivate == NULL)
 	return;
@@ -245,22 +242,22 @@ DUMMYFreeRec(ScrnInfoPtr pScrn)
 }
 
 static const OptionInfoRec *
-DUMMYAvailableOptions(int chipid, int busid)
+AvailableOptions(int chipid, int busid)
 {
-    return DUMMYOptions;
+    return Options;
 }
 
 /* Mandatory */
 static void
-DUMMYIdentify(int flags)
+Identify(int flags)
 {
-    xf86PrintChipsets(DUMMY_NAME, "Driver for Dummy chipsets",
-                      DUMMYChipsets);
+    xf86PrintChipsets(HWC_NAME, "Driver for Android devices with HWComposser API",
+                      Chipsets);
 }
 
 /* Mandatory */
 static Bool
-DUMMYProbe(DriverPtr drv, int flags)
+Probe(DriverPtr drv, int flags)
 {
     Bool foundScreen = FALSE;
     int numDevSections, numUsed;
@@ -273,7 +270,7 @@ DUMMYProbe(DriverPtr drv, int flags)
      * Find the config file Device sections that match this
      * driver, and return if there are none.
      */
-    if ((numDevSections = xf86MatchDevice(DUMMY_DRIVER_NAME,
+    if ((numDevSections = xf86MatchDevice(HWC_DRIVER_NAME,
                                           &devSections)) <= 0) {
         return FALSE;
     }
@@ -284,22 +281,22 @@ DUMMYProbe(DriverPtr drv, int flags)
         for (i = 0; i < numUsed; i++) {
             ScrnInfoPtr pScrn = NULL;
             int entityIndex =
-            xf86ClaimNoSlot(drv,DUMMY_CHIP,devSections[i],TRUE);
+            xf86ClaimNoSlot(drv, 0, devSections[i], TRUE);
             /* Allocate a ScrnInfoRec and claim the slot */
-            if ((pScrn = xf86AllocateScreen(drv,0 ))) {
+            if ((pScrn = xf86AllocateScreen(drv, 0))) {
             xf86AddEntityToScreen(pScrn,entityIndex);
-                pScrn->driverVersion = DUMMY_VERSION;
-                pScrn->driverName    = DUMMY_DRIVER_NAME;
-                pScrn->name          = DUMMY_NAME;
-                pScrn->Probe         = DUMMYProbe;
-                pScrn->PreInit       = DUMMYPreInit;
-                pScrn->ScreenInit    = DUMMYScreenInit;
-                pScrn->SwitchMode    = DUMMYSwitchMode;
-                pScrn->AdjustFrame   = DUMMYAdjustFrame;
-                pScrn->EnterVT       = DUMMYEnterVT;
-                pScrn->LeaveVT       = DUMMYLeaveVT;
-                pScrn->FreeScreen    = DUMMYFreeScreen;
-                pScrn->ValidMode     = DUMMYValidMode;
+                pScrn->driverVersion = HWC_VERSION;
+                pScrn->driverName    = HWC_DRIVER_NAME;
+                pScrn->name          = HWC_NAME;
+                pScrn->Probe         = Probe;
+                pScrn->PreInit       = PreInit;
+                pScrn->ScreenInit    = ScreenInit;
+                pScrn->SwitchMode    = SwitchMode;
+                pScrn->AdjustFrame   = AdjustFrame;
+                pScrn->EnterVT       = EnterVT;
+                pScrn->LeaveVT       = LeaveVT;
+                pScrn->FreeScreen    = FreeScreen;
+                pScrn->ValidMode     = ValidMode;
 
                 foundScreen = TRUE;
             }
@@ -315,8 +312,8 @@ DUMMYProbe(DriverPtr drv, int flags)
 static void
 try_enable_glamor(ScrnInfoPtr pScrn)
 {
-    DUMMYPtr dPtr = DUMMYPTR(pScrn);
-    const char *accel_method_str = xf86GetOptValString(dPtr->Options,
+    HWCPtr hwc = HWCPTR(pScrn);
+    const char *accel_method_str = xf86GetOptValString(hwc->Options,
                                                        OPTION_ACCEL_METHOD);
     Bool do_glamor = (!accel_method_str ||
                       strcmp(accel_method_str, "glamor") == 0);
@@ -327,10 +324,10 @@ try_enable_glamor(ScrnInfoPtr pScrn)
     }
 
     if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
-        //if (hwc_glamor_egl_init(pScrn, dPtr->display, dPtr->context, dPtr->surface)) {
-        if (hwc_glamor_egl_init(pScrn, dPtr->display, dPtr->context, dPtr->surface)) {
+        //if (hwc_glamor_egl_init(pScrn, hwc->display, hwc->context, hwc->surface)) {
+        if (hwc_glamor_egl_init(pScrn, hwc->display, hwc->context, hwc->surface)) {
             xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor-hybris initialized\n");
-            dPtr->glamor = TRUE;
+            hwc->glamor = TRUE;
         } else {
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                        "glamor-hybris initialization failed\n");
@@ -342,7 +339,7 @@ try_enable_glamor(ScrnInfoPtr pScrn)
 #ifdef ENABLE_DRIHYBRIS
     if (xf86LoadSubModule(pScrn, "drihybris"))
     {
-        dPtr->drihybris = TRUE;
+        hwc->drihybris = TRUE;
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "drihybris initialized\n");
     }
 #endif
@@ -350,14 +347,14 @@ try_enable_glamor(ScrnInfoPtr pScrn)
 #endif
 
 # define RETURN \
-    { DUMMYFreeRec(pScrn);\
+    { FreeRec(pScrn);\
 			    return FALSE;\
 					     }
 
 void hwc_set_egl_platform(ScrnInfoPtr pScrn)
 {
-    DUMMYPtr dPtr = DUMMYPTR(pScrn);
-    const char *egl_platform_str = xf86GetOptValString(dPtr->Options,
+    HWCPtr hwc = HWCPTR(pScrn);
+    const char *egl_platform_str = xf86GetOptValString(hwc->Options,
                                                     OPTION_EGL_PLATFORM);
     if (egl_platform_str) {
         setenv("EGL_PLATFORM", egl_platform_str, 1);
@@ -370,25 +367,20 @@ void hwc_set_egl_platform(ScrnInfoPtr pScrn)
 
 /* Mandatory */
 Bool
-DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
+PreInit(ScrnInfoPtr pScrn, int flags)
 {
-    DUMMYPtr dPtr;
+    HWCPtr hwc;
     GDevPtr device = xf86GetEntityInfo(pScrn->entityList[0])->device;
 
     if (flags & PROBE_DETECT)
         return TRUE;
 
-    /* Allocate the DummyRec driverPrivate */
-    if (!DUMMYGetRec(pScrn)) {
+    /* Allocate the HWCRec driverPrivate */
+    if (!GetRec(pScrn)) {
         return FALSE;
     }
 
-    dPtr = DUMMYPTR(pScrn);
-
-    pScrn->chipset = (char *)xf86TokenToString(DUMMYChipsets, DUMMY_CHIP);
-
-    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Chipset is a DUMMY\n");
-
+    hwc = HWCPTR(pScrn);
     pScrn->monitor = pScrn->confScreen->monitor;
 
     if (!xf86SetDepthBpp(pScrn, 0, 0, 0,  Support24bppFb | Support32bppFb))
@@ -446,15 +438,13 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
     xf86CollectOptions(pScrn, device->options);
     /* Process the options */
-    if (!(dPtr->Options = malloc(sizeof(DUMMYOptions))))
+    if (!(hwc->Options = malloc(sizeof(Options))))
         return FALSE;
-    memcpy(dPtr->Options, DUMMYOptions, sizeof(DUMMYOptions));
+    memcpy(hwc->Options, Options, sizeof(Options));
 
-    xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, dPtr->Options);
+    xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, hwc->Options);
 
-    xf86GetOptValBool(dPtr->Options, OPTION_SW_CURSOR,&dPtr->swCursor);
-
-    //xf86CrtcConfigInit(pScrn, &dummy_xf86crtc_config_funcs);
+    //xf86CrtcConfigInit(pScrn, &hwc_xf86crtc_config_funcs);
     //xf86CrtcSetSizeRange(pScrn, 8, 8, SHRT_MAX, SHRT_MAX);
 
     hwc_set_egl_platform(pScrn);
@@ -471,8 +461,8 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
         pScrn->virtualY = pScrn->display->virtualY;
     } else {
         /* Pick rotated HWComposer screen resolution */
-        pScrn->virtualX = dPtr->hwcHeight;
-        pScrn->virtualY = dPtr->hwcWidth;
+        pScrn->virtualX = hwc->hwcHeight;
+        pScrn->virtualY = hwc->hwcWidth;
      }
     pScrn->displayWidth = pScrn->virtualX;
 
@@ -492,7 +482,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
         RETURN;
     }
 
-    if (!dPtr->swCursor) {
+    if (!hwc->swCursor) {
         if (!xf86LoadSubModule(pScrn, "ramdac"))
             RETURN;
     }
@@ -513,10 +503,10 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
         return FALSE;
     }
 
-    dPtr->buffer = NULL;
+    hwc->buffer = NULL;
 
-    dPtr->glamor = FALSE;
-    dPtr->drihybris = FALSE;
+    hwc->glamor = FALSE;
+    hwc->drihybris = FALSE;
 #ifdef ENABLE_GLAMOR
     try_enable_glamor(pScrn);
 #endif
@@ -527,19 +517,19 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
 /* Mandatory */
 static Bool
-DUMMYEnterVT(VT_FUNC_ARGS_DECL)
+EnterVT(VT_FUNC_ARGS_DECL)
 {
     return TRUE;
 }
 
 /* Mandatory */
 static void
-DUMMYLeaveVT(VT_FUNC_ARGS_DECL)
+LeaveVT(VT_FUNC_ARGS_DECL)
 {
 }
 
 static void
-DUMMYLoadPalette(
+LoadPalette(
    ScrnInfoPtr pScrn,
    int numColors,
    int *indices,
@@ -547,7 +537,7 @@ DUMMYLoadPalette(
    VisualPtr pVisual
 ){
    int i, index, shift, Gshift;
-   DUMMYPtr dPtr = DUMMYPTR(pScrn);
+   HWCPtr hwc = HWCPTR(pScrn);
 
    switch(pScrn->depth) {
    case 15:
@@ -564,44 +554,44 @@ DUMMYLoadPalette(
 
    for(i = 0; i < numColors; i++) {
        index = indices[i];
-       dPtr->colors[index].red = colors[index].red << shift;
-       dPtr->colors[index].green = colors[index].green << Gshift;
-       dPtr->colors[index].blue = colors[index].blue << shift;
+       hwc->colors[index].red = colors[index].red << shift;
+       hwc->colors[index].green = colors[index].green << Gshift;
+       hwc->colors[index].blue = colors[index].blue << shift;
    }
 }
 
-static void DUMMYBlockHandler(ScreenPtr pScreen, void *timeout)
+static void hwcBlockHandler(ScreenPtr pScreen, void *timeout)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
-    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+    HWCPtr hwc = HWCPTR(pScrn);
     PixmapPtr rootPixmap;
     int err;
 
-    pScreen->BlockHandler = dPtr->BlockHandler;
+    pScreen->BlockHandler = hwc->BlockHandler;
     pScreen->BlockHandler(pScreen, timeout);
-    pScreen->BlockHandler = DUMMYBlockHandler;
+    pScreen->BlockHandler = hwcBlockHandler;
 
-    RegionPtr dirty = DamageRegion(dPtr->damage);
+    RegionPtr dirty = DamageRegion(hwc->damage);
     unsigned num_cliprects = REGION_NUM_RECTS(dirty);
 
     if (num_cliprects)
     {
         void *pixels = NULL;
         rootPixmap = pScreen->GetScreenPixmap(pScreen);
-        dPtr->eglHybrisUnlockNativeBuffer(dPtr->buffer);
+        hwc->eglHybrisUnlockNativeBuffer(hwc->buffer);
 
         hwc_egl_renderer_update(pScreen);
 
-        err = dPtr->eglHybrisLockNativeBuffer(dPtr->buffer,
+        err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
                         HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
-                        0, 0, dPtr->stride, pScrn->virtualY, &pixels);
+                        0, 0, hwc->stride, pScrn->virtualY, &pixels);
 
-        if (!dPtr->glamor) {
+        if (!hwc->glamor) {
             if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
                 FatalError("Couldn't adjust screen pixmap\n");
         }
 
-        DamageEmpty(dPtr->damage);
+        DamageEmpty(hwc->damage);
     }
 }
 
@@ -609,20 +599,20 @@ static Bool
 CreateScreenResources(ScreenPtr pScreen)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
-    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+    HWCPtr hwc = HWCPTR(pScrn);
     PixmapPtr rootPixmap;
     Bool ret;
     void *pixels = NULL;
     int err;
 
-    pScreen->CreateScreenResources = dPtr->CreateScreenResources;
+    pScreen->CreateScreenResources = hwc->CreateScreenResources;
     ret = pScreen->CreateScreenResources(pScreen);
     pScreen->CreateScreenResources = CreateScreenResources;
 
     rootPixmap = pScreen->GetScreenPixmap(pScreen);
 
 #ifdef ENABLE_GLAMOR
-    if (dPtr->glamor) {
+    if (hwc->glamor) {
         pScreen->DestroyPixmap(rootPixmap);
 
         rootPixmap = glamor_create_pixmap(pScreen,
@@ -634,39 +624,39 @@ CreateScreenResources(ScreenPtr pScreen)
     }
 #endif
 
-    err = dPtr->eglHybrisCreateNativeBuffer(pScrn->virtualX, pScrn->virtualY,
+    err = hwc->eglHybrisCreateNativeBuffer(pScrn->virtualX, pScrn->virtualY,
                                       HYBRIS_USAGE_HW_TEXTURE |
                                       HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                       HYBRIS_PIXEL_FORMAT_RGBA_8888,
-                                      &dPtr->stride, &dPtr->buffer);
+                                      &hwc->stride, &hwc->buffer);
 
-    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "alloc: status=%d, stride=%d\n", err, dPtr->stride);
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "alloc: status=%d, stride=%d\n", err, hwc->stride);
 
     hwc_egl_renderer_screen_init(pScreen);
 
 #ifdef ENABLE_GLAMOR
-    if (dPtr->glamor)
-        dPtr->rootTexture = glamor_get_pixmap_texture(rootPixmap);
+    if (hwc->glamor)
+        hwc->rootTexture = glamor_get_pixmap_texture(rootPixmap);
 #endif
 
-    err = dPtr->eglHybrisLockNativeBuffer(dPtr->buffer,
+    err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
                                     HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
-                                    0, 0, dPtr->stride, pScrn->virtualY, &pixels);
+                                    0, 0, hwc->stride, pScrn->virtualY, &pixels);
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "gralloc lock returns %i\n", err);
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "lock to vaddr %p\n", pixels);
 
-    if (!dPtr->glamor) {
+    if (!hwc->glamor) {
         if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
             FatalError("Couldn't adjust screen pixmap\n");
     }
 
-    dPtr->damage = DamageCreate(NULL, NULL, DamageReportNone, TRUE,
+    hwc->damage = DamageCreate(NULL, NULL, DamageReportNone, TRUE,
                                 pScreen, rootPixmap);
 
-    if (dPtr->damage) {
-        DamageRegister(&rootPixmap->drawable, dPtr->damage);
-        dPtr->dirty_enabled = TRUE;
+    if (hwc->damage) {
+        DamageRegister(&rootPixmap->drawable, hwc->damage);
+        hwc->dirty_enabled = TRUE;
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Damage tracking initialized\n");
     }
     else {
@@ -678,14 +668,12 @@ CreateScreenResources(ScreenPtr pScreen)
     return ret;
 }
 
-static ScrnInfoPtr DUMMYScrn; /* static-globalize it */
-
 /* Mandatory */
 static Bool
-DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
+ScreenInit(SCREEN_INIT_ARGS_DECL)
 {
     ScrnInfoPtr pScrn;
-    DUMMYPtr dPtr;
+    HWCPtr hwc;
     int ret;
     VisualPtr visual;
     void *pixels;
@@ -695,8 +683,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
      * one first thing
      */
     pScrn = xf86ScreenToScrn(pScreen);
-    dPtr = DUMMYPTR(pScrn);
-    DUMMYScrn = pScrn;
+    hwc = HWCPTR(pScrn);
 
     /*
      * Reset visual list.
@@ -742,7 +729,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     fbPictureInit(pScreen, 0, 0);
 
 #ifdef ENABLE_GLAMOR
-    if (dPtr->glamor && !glamor_init(pScreen, GLAMOR_USE_EGL_SCREEN)) {
+    if (hwc->glamor && !glamor_init(pScreen, GLAMOR_USE_EGL_SCREEN)) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                     "Failed to initialize glamor at ScreenInit() time.\n");
         return FALSE;
@@ -751,11 +738,8 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     xf86SetBlackWhitePixels(pScreen);
 
-    dPtr->CreateScreenResources = pScreen->CreateScreenResources;
+    hwc->CreateScreenResources = pScreen->CreateScreenResources;
     pScreen->CreateScreenResources = CreateScreenResources;
-
-    if (dPtr->swCursor)
-        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Using Software Cursor.\n");
 
     xf86SetBackingStore(pScreen);
     xf86SetSilkenMouse(pScreen);
@@ -763,22 +747,12 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     /* Initialise cursor functions */
     miDCInitialize (pScreen, xf86GetPointerScreenFuncs());
 
-
-    if (!dPtr->swCursor) {
-      /* HW cursor functions */
-        if (!DUMMYCursorInit(pScreen)) {
-            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                       "Hardware cursor initialization failed\n");
-            return FALSE;
-        }
-    }
-
     /* Initialise default colourmap */
     if(!miCreateDefColormap(pScreen))
         return FALSE;
 
     if (!xf86HandleColormaps(pScreen, 1024, pScrn->rgbBits,
-                         DUMMYLoadPalette, NULL,
+                         LoadPalette, NULL,
                          CMAP_PALETTED_TRUECOLOR
                          | CMAP_RELOAD_ON_MODE_SWITCH))
         return FALSE;
@@ -786,15 +760,11 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     //if (!xf86CrtcScreenInit(pScreen))
     //    return FALSE;
 
-    pScreen->SaveScreen = DUMMYSaveScreen;
+    pScreen->SaveScreen = SaveScreen;
 
     /* Wrap the current CloseScreen function */
-    dPtr->CloseScreen = pScreen->CloseScreen;
-    pScreen->CloseScreen = DUMMYCloseScreen;
-
-    /* Wrap the current CreateWindow function */
-    dPtr->CreateWindow = pScreen->CreateWindow;
-    pScreen->CreateWindow = DUMMYCreateWindow;
+    hwc->CloseScreen = pScreen->CloseScreen;
+    pScreen->CloseScreen = CloseScreen;
 
     /* Report any unused options (only for the first generation) */
     if (serverGeneration == 1) {
@@ -802,11 +772,11 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     }
 
     /* Wrap the current BlockHandler function */
-    dPtr->BlockHandler = pScreen->BlockHandler;
-    pScreen->BlockHandler = DUMMYBlockHandler;
+    hwc->BlockHandler = pScreen->BlockHandler;
+    pScreen->BlockHandler = hwcBlockHandler;
 
 #ifdef ENABLE_DRIHYBRIS
-    if (dPtr->drihybris) {
+    if (hwc->drihybris) {
         drihybris_extension_init();
 
         if (!hwc_present_screen_init(pScreen)) {
@@ -821,106 +791,66 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
 /* Mandatory */
 Bool
-DUMMYSwitchMode(SWITCH_MODE_ARGS_DECL)
+SwitchMode(SWITCH_MODE_ARGS_DECL)
 {
     return TRUE;
 }
 
 /* Mandatory */
 void
-DUMMYAdjustFrame(ADJUST_FRAME_ARGS_DECL)
+AdjustFrame(ADJUST_FRAME_ARGS_DECL)
 {
 }
 
 /* Mandatory */
 static Bool
-DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
+CloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
-    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+    HWCPtr hwc = HWCPTR(pScrn);
 
-    if (dPtr->damage) {
-        DamageUnregister(dPtr->damage);
-        DamageDestroy(dPtr->damage);
-        dPtr->damage = NULL;
+    if (hwc->damage) {
+        DamageUnregister(hwc->damage);
+        DamageDestroy(hwc->damage);
+        hwc->damage = NULL;
     }
 
     hwc_egl_renderer_screen_close(pScreen);
 
-    if (dPtr->buffer != NULL)
+    if (hwc->buffer != NULL)
     {
-        dPtr->eglHybrisUnlockNativeBuffer(dPtr->buffer);
-        dPtr->eglHybrisReleaseNativeBuffer(dPtr->buffer);
-        dPtr->buffer = NULL;
+        hwc->eglHybrisUnlockNativeBuffer(hwc->buffer);
+        hwc->eglHybrisReleaseNativeBuffer(hwc->buffer);
+        hwc->buffer = NULL;
     }
 
-    if (dPtr->CursorInfo)
-        xf86DestroyCursorInfoRec(dPtr->CursorInfo);
+    if (hwc->CursorInfo)
+        xf86DestroyCursorInfoRec(hwc->CursorInfo);
 
     pScrn->vtSema = FALSE;
-    pScreen->CloseScreen = dPtr->CloseScreen;
+    pScreen->CloseScreen = hwc->CloseScreen;
     return (*pScreen->CloseScreen)(CLOSE_SCREEN_ARGS);
 }
 
 /* Optional */
 static void
-DUMMYFreeScreen(FREE_SCREEN_ARGS_DECL)
+FreeScreen(FREE_SCREEN_ARGS_DECL)
 {
     SCRN_INFO_PTR(arg);
-    DUMMYFreeRec(pScrn);
+    FreeRec(pScrn);
 }
 
 static Bool
-DUMMYSaveScreen(ScreenPtr pScreen, int mode)
+SaveScreen(ScreenPtr pScreen, int mode)
 {
     return TRUE;
 }
 
 /* Optional */
 static ModeStatus
-DUMMYValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode, Bool verbose, int flags)
+ValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode, Bool verbose, int flags)
 {
     return(MODE_OK);
-}
-
-Atom VFB_PROP  = 0;
-#define  VFB_PROP_NAME  "VFB_IDENT"
-
-static Bool
-DUMMYCreateWindow(WindowPtr pWin)
-{
-    ScreenPtr pScreen = pWin->drawable.pScreen;
-    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
-    WindowPtr pWinRoot;
-    int ret;
-
-    pScreen->CreateWindow = dPtr->CreateWindow;
-    ret = pScreen->CreateWindow(pWin);
-    dPtr->CreateWindow = pScreen->CreateWindow;
-    pScreen->CreateWindow = DUMMYCreateWindow;
-
-    if(ret != TRUE)
-        return(ret);
-
-    if(dPtr->prop == FALSE) {
-#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 8
-        pWinRoot = WindowTable[DUMMYScrn->pScreen->myNum];
-#else
-        pWinRoot = DUMMYScrn->pScreen->root;
-#endif
-        if (! ValidAtom(VFB_PROP))
-            VFB_PROP = MakeAtom(VFB_PROP_NAME, strlen(VFB_PROP_NAME), 1);
-
-        ret = dixChangeWindowProperty(serverClient, pWinRoot, VFB_PROP,
-                                      XA_STRING, 8, PropModeReplace,
-                                      (int)4, (pointer)"TRUE", FALSE);
-        if( ret != Success)
-            ErrorF("Could not set VFB root window property");
-            dPtr->prop = TRUE;
-
-        return TRUE;
-    }
-    return TRUE;
 }
 
 #ifndef HW_SKIP_CONSOLE
@@ -928,7 +858,7 @@ DUMMYCreateWindow(WindowPtr pWin)
 #endif
 
 static Bool
-dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
+hwc_driver_func(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
 {
     CARD32 *flag;
 
