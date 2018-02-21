@@ -106,12 +106,14 @@ static SymTabRec DUMMYChipsets[] = {
 
 typedef enum {
     OPTION_SW_CURSOR,
-    OPTION_ACCEL_METHOD
+    OPTION_ACCEL_METHOD,
+    OPTION_EGL_PLATFORM
 } DUMMYOpts;
 
 static const OptionInfoRec DUMMYOptions[] = {
     { OPTION_SW_CURSOR, "SWcursor", OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_ACCEL_METHOD, "AccelMethod", OPTV_STRING, {0}, FALSE},
+    { OPTION_EGL_PLATFORM, "EGLPlatform", OPTV_STRING, {0}, FALSE},
     { -1,               NULL,       OPTV_NONE,    {0}, FALSE }
 };
 
@@ -352,6 +354,20 @@ try_enable_glamor(ScrnInfoPtr pScrn)
 			    return FALSE;\
 					     }
 
+void hwc_set_egl_platform(ScrnInfoPtr pScrn)
+{
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+    const char *egl_platform_str = xf86GetOptValString(dPtr->Options,
+                                                    OPTION_EGL_PLATFORM);
+    if (egl_platform_str) {
+        setenv("EGL_PLATFORM", egl_platform_str, 1);
+    }
+    else {
+        // Default to EGL_PLATFORM=hwcomposer
+        setenv("EGL_PLATFORM", "hwcomposer", 0);
+    }
+}
+
 /* Mandatory */
 Bool
 DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
@@ -440,6 +456,8 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
     //xf86CrtcConfigInit(pScrn, &dummy_xf86crtc_config_funcs);
     //xf86CrtcSetSizeRange(pScrn, 8, 8, SHRT_MAX, SHRT_MAX);
+
+    hwc_set_egl_platform(pScrn);
 
     if (!hwc_hwcomposer_init(pScrn)) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
