@@ -183,38 +183,6 @@ static void ConstructFakeDisplayMode(ScrnInfoPtr pScrn, DisplayModePtr mode)
 }
 
 static Bool
-hwc_xf86crtc_resize(ScrnInfoPtr pScrn, int width, int height)
-{
-    ScreenPtr pScreen = pScrn->pScreen;
-    PixmapPtr rootPixmap = pScreen->GetScreenPixmap(pScreen);
-    int newPitch = width * (pScrn->bitsPerPixel / 8);
-    void *oldScreen = rootPixmap->devPrivate.ptr;
-    void *newScreen = calloc(newPitch, height);
-
-    if (!newScreen)
-        return FALSE;
-
-    if (!pScreen->ModifyPixmapHeader(rootPixmap, width, height,
-                                     -1, -1, newPitch, newScreen)) {
-        free(newScreen);
-        return FALSE;
-    }
-
-    free(oldScreen);
-
-    pScrn->virtualX = width;
-    pScrn->virtualY = height;
-    pScrn->displayWidth = width;
-    ConstructFakeDisplayMode(pScrn, pScrn->modes);
-
-    return TRUE;
-}
-
-static const xf86CrtcConfigFuncsRec hwc_xf86crtc_config_funcs = {
-    hwc_xf86crtc_resize
-};
-
-static Bool
 GetRec(ScrnInfoPtr pScrn)
 {
     /*
@@ -371,6 +339,8 @@ PreInit(ScrnInfoPtr pScrn, int flags)
 {
     HWCPtr hwc;
     GDevPtr device = xf86GetEntityInfo(pScrn->entityList[0])->device;
+    xf86CrtcPtr crtc;
+    xf86OutputPtr output;
 
     if (flags & PROBE_DETECT)
         return TRUE;
@@ -444,9 +414,6 @@ PreInit(ScrnInfoPtr pScrn, int flags)
 
     xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, hwc->Options);
 
-    //xf86CrtcConfigInit(pScrn, &hwc_xf86crtc_config_funcs);
-    //xf86CrtcSetSizeRange(pScrn, 8, 8, SHRT_MAX, SHRT_MAX);
-
     hwc_set_egl_platform(pScrn);
 
     if (!hwc_hwcomposer_init(pScrn)) {
@@ -455,25 +422,12 @@ PreInit(ScrnInfoPtr pScrn, int flags)
         return FALSE;
     }
 
-    /* Pick up size from the "Display" subsection if it exists */
-    if (pScrn->display->virtualX) {
-        pScrn->virtualX = pScrn->display->virtualX;
-        pScrn->virtualY = pScrn->display->virtualY;
-    } else {
-        /* Pick rotated HWComposer screen resolution */
-        pScrn->virtualX = hwc->hwcHeight;
-        pScrn->virtualY = hwc->hwcWidth;
-     }
-    pScrn->displayWidth = pScrn->virtualX;
+    if (!hwc_lights_init(pScrn)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                    "failed to initialize lights module for backlight control\n");
+    }
 
-    /* Construct a mode with the screen's initial dimensions */
-    pScrn->modes = calloc(sizeof(DisplayModeRec), 1);
-    ConstructFakeDisplayMode(pScrn, pScrn->modes);
-    pScrn->modes->next = pScrn->modes->prev = pScrn->modes;
-    pScrn->currentMode = pScrn->modes;
-
-    /* Print the list of modes being used */
-    xf86PrintModes(pScrn);
+    hwc_display_pre_init(pScrn);
 
     /* If monitor resolution is set on the command line, use it */
     xf86SetDpi(pScrn, 0, 0);
@@ -622,7 +576,7 @@ CreateScreenResources(ScreenPtr pScreen)
 
     if (hwc->damage) {
         DamageRegister(&rootPixmap->drawable, hwc->damage);
-        hwc->dirty_enabled = TRUE;
+        hwc->dirty = FALSE;
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Damage tracking initialized\n");
     }
     else {
@@ -723,14 +677,28 @@ ScreenInit(SCREEN_INIT_ARGS_DECL)
                          | CMAP_RELOAD_ON_MODE_SWITCH))
         return FALSE;
 
-    //if (!xf86CrtcScreenInit(pScreen))
-    //    return FALSE;
+    if (!xf86CrtcScreenInit(pScreen))
+        return FALSE;
 
     pScreen->SaveScreen = SaveScreen;
 
     /* Wrap the current CloseScreen function */
     hwc->CloseScreen = pScreen->CloseScreen;
     pScreen->CloseScreen = CloseScreen;
+
+    xf86DPMSInit(pScreen, xf86DPMSSet, 0);
+    hwc->dpmsMode = DPMSModeOn;
+
+    if (hwc->glamor) {
+        XF86VideoAdaptorPtr     glamor_adaptor;
+
+        glamor_adaptor = glamor_xv_init(pScreen, 16);
+        if (glamor_adaptor != NULL)
+            xf86XVScreenInit(pScreen, &glamor_adaptor, 1);
+        else
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                       "Failed to initialize XV support.\n");
+    }
 
     /* Report any unused options (only for the first generation) */
     if (serverGeneration == 1) {

@@ -34,11 +34,10 @@ hwcomposer_drv_ladir = @moduledir@/drivers
 
 hwcomposer_drv_la_SOURCES = \
          compat-api.h \
+         display.c \
          driver.c \
          driver.h \
          hwcomposer.c \
-         hwcomposer.h \
          present.c \
          renderer.c \
-         renderer.h \
          vblank.c

@@ -99,8 +99,6 @@ void present(void *user_data, struct ANativeWindow *window,
     hwc_layer_1_t *fblayer = hwc->fblayer;
     hwc_composer_device_1_t *hwcdevice = hwc->hwcDevicePtr;
 
-    xf86DrvMsg(pScrn->scrnIndex, X_DEBUG, "present callback called\n");
-
     int oldretire = contents[0]->retireFenceFd;
     contents[0]->retireFenceFd = -1;
 

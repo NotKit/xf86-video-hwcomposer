@@ -36,5 +36,5 @@ static present_screen_info_rec hwcomposer_present_screen_info = {
 Bool
 hwc_present_screen_init(ScreenPtr pScreen)
 {
-    return present_screen_init(pScreen, &hwcomposer_present_screen_info);
+    return present_screen_init(pScreen, NULL);
 }

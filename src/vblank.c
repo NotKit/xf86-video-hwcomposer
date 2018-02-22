@@ -56,11 +56,11 @@ hwc_update(ScreenPtr screen, uint64_t event_id)
     PixmapPtr rootPixmap;
     int err;
 
-    if (hwc->damage) {
+    if (hwc->damage && hwc->dpmsMode == DPMSModeOn) {
         RegionPtr dirty = DamageRegion(hwc->damage);
         unsigned num_cliprects = REGION_NUM_RECTS(dirty);
 
-        if (num_cliprects)
+        if (num_cliprects || hwc->dirty)
         {
             void *pixels = NULL;
             rootPixmap = screen->GetScreenPixmap(screen);
@@ -78,6 +78,7 @@ hwc_update(ScreenPtr screen, uint64_t event_id)
             }
 
             DamageEmpty(hwc->damage);
+            hwc->dirty = FALSE;
         }
     }
 }

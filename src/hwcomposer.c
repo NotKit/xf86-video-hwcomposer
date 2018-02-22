@@ -57,7 +57,7 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 	hwc->hwcDevicePtr = hwcDevicePtr;
 	hw_device_t *hwcDevice = &hwcDevicePtr->common;
 
-	uint32_t hwc_version = interpreted_version(hwcDevice);
+	uint32_t hwc_version = hwc->hwcVersion = interpreted_version(hwcDevice);
 
 #ifdef HWC_DEVICE_API_VERSION_1_4
 	if (hwc_version == HWC_DEVICE_API_VERSION_1_4) {
