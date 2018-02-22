@@ -9,6 +9,7 @@
 #include <X11/extensions/Xv.h>
 #endif
 #include <string.h>
+#include <pthread.h>
 
 #include <android-config.h>
 
@@ -17,6 +18,7 @@
 #include <epoxy/egl.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
+#include <hardware/lights.h>
 #include <hybris/eglplatformcommon/hybris_nativebufferext.h>
 
 #include "compat-api.h"
@@ -34,8 +36,10 @@ typedef struct _color
     int blue;
 } dummy_colors;
 
+Bool hwc_display_pre_init(ScrnInfoPtr pScrn);
 Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn);
 void hwc_hwcomposer_close(ScrnInfoPtr pScrn);
+Bool hwc_lights_init(ScrnInfoPtr pScrn);
 Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn);
 Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn);
 void hwc_egl_renderer_close(ScrnInfoPtr pScrn);
@@ -43,6 +47,8 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen);
 void hwc_egl_renderer_screen_close(ScreenPtr pScreen);
 void hwc_egl_renderer_update(ScreenPtr pScreen);
 Bool hwc_present_screen_init(ScreenPtr pScreen);
+void hwc_vblank_screen_init(ScreenPtr pScreen);
+int hwc_queue_vblank(ScreenPtr screen, uint64_t event_id, uint64_t hwcc);
 
 typedef struct HWCRec
 {
@@ -60,7 +66,7 @@ typedef struct HWCRec
     Bool prop;
 
     DamagePtr damage;
-    Bool dirty_enabled;
+    Bool dirty;
     Bool glamor;
     Bool drihybris;
 
@@ -70,9 +76,15 @@ typedef struct HWCRec
     hwc_composer_device_1_t *hwcDevicePtr;
     hwc_display_contents_1_t **hwcContents;
     hwc_layer_1_t *fblayer;
-
+    uint32_t hwcVersion;
     int hwcWidth;
     int hwcHeight;
+
+    struct light_device_t *lightsDevice;
+    int screenBrightness;
+
+    DisplayModePtr modes;
+    int dpmsMode;
 
     PFNEGLHYBRISCREATENATIVEBUFFERPROC eglHybrisCreateNativeBuffer;
     PFNEGLHYBRISLOCKNATIVEBUFFERPROC eglHybrisLockNativeBuffer;
