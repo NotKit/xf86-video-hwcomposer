@@ -583,7 +583,7 @@ static void hwcBlockHandler(ScreenPtr pScreen, void *timeout)
         hwc_egl_renderer_update(pScreen);
 
         err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
-                        HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
+                        HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
                         0, 0, hwc->stride, pScrn->virtualY, &pixels);
 
         if (!hwc->glamor) {
@@ -626,7 +626,7 @@ CreateScreenResources(ScreenPtr pScreen)
 
     err = hwc->eglHybrisCreateNativeBuffer(pScrn->virtualX, pScrn->virtualY,
                                       HYBRIS_USAGE_HW_TEXTURE |
-                                      HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
+                                      HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                       HYBRIS_PIXEL_FORMAT_RGBA_8888,
                                       &hwc->stride, &hwc->buffer);
 
@@ -640,7 +640,7 @@ CreateScreenResources(ScreenPtr pScreen)
 #endif
 
     err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
-                                    HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
+                                    HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                     0, 0, hwc->stride, pScrn->virtualY, &pixels);
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "gralloc lock returns %i\n", err);
