@@ -69,7 +69,7 @@ hwc_update(ScreenPtr screen, uint64_t event_id)
             hwc_egl_renderer_update(screen);
 
             err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
-                            HYBRIS_USAGE_SW_READ_RARELY|HYBRIS_USAGE_SW_WRITE_OFTEN,
+                            HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
                             0, 0, hwc->stride, pScrn->virtualY, &pixels);
 
             if (!hwc->glamor) {
