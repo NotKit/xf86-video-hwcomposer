@@ -46,10 +46,11 @@ void hwc_toggle_screen_brightness(ScrnInfoPtr pScrn);
 void hwc_set_power_mode(ScrnInfoPtr pScrn, int disp, int mode);
 
 Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn);
-Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn);
+Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn, Bool do_glamor);
 void hwc_egl_renderer_close(ScrnInfoPtr pScrn);
 void hwc_egl_renderer_screen_init(ScreenPtr pScreen);
 void hwc_egl_renderer_screen_close(ScreenPtr pScreen);
+void *hwc_egl_renderer_thread(void *user_data);
 void hwc_egl_renderer_update(ScreenPtr pScreen);
 
 void hwc_ortho_2d(float* mat, float left, float right, float bottom, float top);
@@ -85,6 +86,7 @@ typedef struct {
     EGLDisplay display;
     EGLSurface surface;
     EGLContext context;
+    EGLContext glamorContext;
     GLuint rootTexture;
     GLuint cursorTexture;
 
@@ -144,6 +146,10 @@ typedef struct HWCRec
 
     DisplayModePtr modes;
     int dpmsMode;
+
+    pthread_t rendererThread;
+    int rendererIsRunning;
+    pthread_mutex_t rendererMutex;
 } HWCRec, *HWCPtr;
 
 /* The privates of the hwcomposer driver */

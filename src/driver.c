@@ -288,15 +288,6 @@ static void
 try_enable_glamor(ScrnInfoPtr pScrn)
 {
     HWCPtr hwc = HWCPTR(pScrn);
-    const char *accel_method_str = xf86GetOptValString(hwc->Options,
-                                                       OPTION_ACCEL_METHOD);
-    Bool do_glamor = (!accel_method_str ||
-                      strcmp(accel_method_str, "glamor") == 0);
-
-    if (!do_glamor) {
-        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "glamor disabled\n");
-        return;
-    }
 
 #ifdef ENABLE_DRIHYBRIS
 #ifndef __ANDROID__
@@ -312,7 +303,7 @@ try_enable_glamor(ScrnInfoPtr pScrn)
     if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
 #endif // __ANDROID__
         if (hwc_glamor_egl_init(pScrn, hwc->renderer.display,
-                hwc->renderer.context, hwc->renderer.surface)) {
+                hwc->renderer.glamorContext, EGL_NO_SURFACE)) {
             xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor-hybris initialized\n");
             hwc->glamor = TRUE;
         } else {
@@ -356,6 +347,8 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     xf86CrtcPtr crtc;
     xf86OutputPtr output;
     const char *s;
+    const char *accel_method_str;
+    Bool do_glamor;
 
     if (flags & PROBE_DETECT)
         return TRUE;
@@ -494,7 +487,16 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     pScrn->memPhysBase = 0;
     pScrn->fbOffset = 0;
 
-    if (!hwc_egl_renderer_init(pScrn)) {
+    accel_method_str = xf86GetOptValString(hwc->Options,
+                                                       OPTION_ACCEL_METHOD);
+    do_glamor = (!accel_method_str ||
+                      strcmp(accel_method_str, "glamor") == 0);
+
+    if (!do_glamor) {
+        xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "glamor disabled\n");
+    }
+
+    if (!hwc_egl_renderer_init(pScrn, do_glamor)) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                     "failed to initialize EGL renderer\n");
             return FALSE;
@@ -511,7 +513,9 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     hwc->glamor = FALSE;
     hwc->drihybris = FALSE;
 #ifdef ENABLE_GLAMOR
-    try_enable_glamor(pScrn);
+    if (do_glamor) {
+        try_enable_glamor(pScrn);
+    }
 #endif
 
     return TRUE;
@@ -622,7 +626,12 @@ CreateScreenResources(ScreenPtr pScreen)
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "alloc: status=%d, stride=%d\n", err, hwc->stride);
 
-    hwc_egl_renderer_screen_init(pScreen);
+    hwc->rendererIsRunning = 1;
+
+    if (pthread_mutex_init(&(hwc->rendererMutex), NULL) ||
+        pthread_create(&(hwc->rendererThread), NULL, hwc_egl_renderer_thread, pScreen)) {
+        FatalError("Error creating rendering thread\n");
+    }
 
 #ifdef ENABLE_GLAMOR
     if (hwc->glamor)
@@ -861,7 +870,10 @@ CloseScreen(CLOSE_SCREEN_ARGS_DECL)
         hwc->damage = NULL;
     }
 
-    hwc_egl_renderer_screen_close(pScreen);
+    hwc->rendererIsRunning = 0;
+
+    pthread_join(hwc->rendererThread, NULL);
+    pthread_mutex_destroy(&(hwc->rendererMutex));
 
     if (hwc->buffer != NULL)
     {
