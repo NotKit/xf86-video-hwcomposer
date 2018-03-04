@@ -102,7 +102,7 @@ MessageCallback( GLenum source,
             type, severity, message );
 }
 
-Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
+Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn, Bool do_glamor)
 {
     HWCPtr hwc = HWCPTR(pScrn);
     hwc_renderer_ptr renderer = &hwc->renderer;
@@ -156,6 +156,13 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     assert(context != EGL_NO_CONTEXT);
     renderer->context = context;
 
+    if (do_glamor) {
+        // Create shared context for glamor
+        hwc->glamorContext = eglCreateContext(hwc->display, ecfg, context, ctxattr);
+        assert(eglGetError() == EGL_SUCCESS);
+        assert(hwc->glamorContext != EGL_NO_CONTEXT);
+    }
+
     assert(eglMakeCurrent((EGLDisplay) display, surface, surface, context) == EGL_TRUE);
 
     // During init, enable debug output
@@ -173,6 +180,10 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     renderer->rootShader.program = 0;
     renderer->projShader.program = 0;
 
+    // Release context so it can be used in different thread
+    assert(eglMakeCurrent(hwc->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) == EGL_TRUE);
+
+
     return TRUE;
 }
 
@@ -181,6 +192,10 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     HWCPtr hwc = HWCPTR(pScrn);
     hwc_renderer_ptr renderer = &hwc->renderer;
+
+    int result = eglMakeCurrent(hwc->display, hwc->surface, hwc->surface, hwc->context);
+    printf("%d %d\n", result, eglGetError());
+    assert(result == EGL_TRUE);
 
     glBindTexture(GL_TEXTURE_2D, renderer->rootTexture);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -312,6 +327,33 @@ void hwc_egl_render_cursor(ScreenPtr pScreen) {
     glDisable(GL_BLEND);
     glDisableVertexAttribArray(renderer->projShader.position);
     glDisableVertexAttribArray(renderer->projShader.texcoords);
+}
+
+void *hwc_egl_renderer_thread(void *user_data)
+{
+    ScreenPtr pScreen = (ScreenPtr)user_data;
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    HWCPtr hwc = HWCPTR(pScrn);
+
+    hwc_egl_renderer_screen_init(pScreen);
+    // assert(eglMakeCurrent(hwc->display, hwc->surface, hwc->surface, hwc->context) == EGL_TRUE);
+
+    while (hwc->rendererIsRunning) {
+        pthread_mutex_lock(&(hwc->rendererMutex));
+
+        if (hwc->dirty) {
+            hwc->dirty = FALSE;
+            hwc_egl_renderer_update(pScreen);
+            pthread_mutex_unlock(&(hwc->rendererMutex));
+        } else {
+            pthread_mutex_unlock(&(hwc->rendererMutex));
+            usleep(1000);
+        }
+    }
+
+    hwc_egl_renderer_screen_close(pScreen);
+
+    return NULL;
 }
 
 void hwc_egl_renderer_update(ScreenPtr pScreen)
