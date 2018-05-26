@@ -50,6 +50,11 @@ Bool hwc_present_screen_init(ScreenPtr pScreen);
 void hwc_vblank_screen_init(ScreenPtr pScreen);
 int hwc_queue_vblank(ScreenPtr screen, uint64_t event_id, uint64_t hwcc);
 
+typedef enum {
+    HWC_ROTATE_CW,
+    HWC_ROTATE_CCW
+} hwc_rotation;
+
 typedef struct HWCRec
 {
     /* options */
@@ -69,6 +74,7 @@ typedef struct HWCRec
     Bool dirty;
     Bool glamor;
     Bool drihybris;
+    hwc_rotation rotation;
 
     gralloc_module_t *gralloc;
     alloc_device_t *alloc;

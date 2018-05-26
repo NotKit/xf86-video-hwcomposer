@@ -71,11 +71,19 @@ static const GLfloat squareVertices[] = {
     1.0f,  1.0f,
 };
 
-static const GLfloat textureVertices[] = {
-    1.0f, 1.0f,
-    1.0f, 0.0f,
-    0.0f,  1.0f,
-    0.0f,  0.0f,
+static const GLfloat textureVertices[][8] = {
+    { // CW - 90 degrees
+        1.0f, 1.0f,
+        1.0f, 0.0f,
+        0.0f,  1.0f,
+        0.0f,  0.0f,
+    },
+    { // CCW - 270 degrees
+        0.0f,  0.0f,
+        0.0f,  1.0f,
+        1.0f, 0.0f,
+        1.0f, 1.0f
+    }
 };
 
 void present(void *user_data, struct ANativeWindow *window,
@@ -269,7 +277,7 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
     glVertexAttribPointer(position_loc, 2, GL_FLOAT, 0, 0, squareVertices);
     glEnableVertexAttribArray(position_loc);
 
-    glVertexAttribPointer(texcoords_loc, 2, GL_FLOAT, 0, 0, textureVertices);
+    glVertexAttribPointer(texcoords_loc, 2, GL_FLOAT, 0, 0, textureVertices[hwc->rotation]);
     glEnableVertexAttribArray(texcoords_loc);
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);

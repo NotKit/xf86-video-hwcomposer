@@ -105,12 +105,14 @@ static SymTabRec Chipsets[] = {
 
 typedef enum {
     OPTION_ACCEL_METHOD,
-    OPTION_EGL_PLATFORM
+    OPTION_EGL_PLATFORM,
+    OPTION_ROTATE
 } Opts;
 
 static const OptionInfoRec Options[] = {
     { OPTION_ACCEL_METHOD, "AccelMethod", OPTV_STRING, {0}, FALSE},
     { OPTION_EGL_PLATFORM, "EGLPlatform", OPTV_STRING, {0}, FALSE},
+    { OPTION_ROTATE,       "Rotate",      OPTV_STRING, {0}, FALSE },
     { -1,               NULL,       OPTV_NONE,    {0}, FALSE }
 };
 
@@ -341,6 +343,7 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     GDevPtr device = xf86GetEntityInfo(pScrn->entityList[0])->device;
     xf86CrtcPtr crtc;
     xf86OutputPtr output;
+    char *s;
 
     if (flags & PROBE_DETECT)
         return TRUE;
@@ -413,6 +416,26 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     memcpy(hwc->Options, Options, sizeof(Options));
 
     xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, hwc->Options);
+
+    /* rotation */
+    hwc->rotation = HWC_ROTATE_CW;
+    if ((s = xf86GetOptValString(hwc->Options, OPTION_ROTATE)))
+    {
+        if(!xf86NameCmp(s, "CW")) {
+            hwc->rotation = HWC_ROTATE_CW;
+            xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "rotating screen clockwise\n");
+        }
+        else if(!xf86NameCmp(s, "CCW")) {
+            hwc->rotation = HWC_ROTATE_CCW;
+            xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "rotating screen counter-clockwise\n");
+        }
+        else {
+            xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
+                    "\"%s\" is not a valid value for Option \"Rotate\"\n", s);
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                    "valid options are \"CW\", \"CCW\"\n");
+        }
+    }
 
     hwc_set_egl_platform(pScrn);
 
