@@ -773,13 +773,12 @@ ScreenInit(SCREEN_INIT_ARGS_DECL)
 #ifdef ENABLE_DRIHYBRIS
     if (hwc->drihybris) {
         drihybris_extension_init();
-
-        if (!hwc_present_screen_init(pScreen)) {
-            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                       "Failed to initialize the Present extension.\n");
-        }
     }
 #endif
+    if (!hwc_present_screen_init(pScreen)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "Failed to initialize the Present extension.\n");
+    }
 
     return TRUE;
 }
