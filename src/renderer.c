@@ -32,6 +32,18 @@ const char vertex_src [] =
     "    textureCoordinate = texcoords.xy;\n"
     "}\n";
 
+const char vertex_mvp_src [] =
+    "attribute vec2 position;\n"
+    "attribute vec2 texcoords;\n"
+    "varying vec2 textureCoordinate;\n"
+    "uniform mat4 transform;\n"
+
+    "void main()\n"
+    "{\n"
+    "    gl_Position = transform * vec4(position, 0.0, 1.0);\n"
+    "    textureCoordinate = texcoords.xy;\n"
+    "}\n";
+
 const char fragment_src [] =
     "varying highp vec2 textureCoordinate;\n"
     "uniform sampler2D texture;\n"
@@ -50,6 +62,16 @@ const char fragment_src_bgra [] =
     "    gl_FragColor = texture2D(texture, textureCoordinate).bgra;\n"
     "}\n";
 
+const char fragment_src_cursor [] =
+    "varying highp vec2 textureCoordinate;\n"
+    "uniform sampler2D texture;\n"
+
+    "void main()\n"
+    "{\n"
+    "    gl_FragColor = texture2D(texture, textureCoordinate).bgra;\n"
+    "    //gl_FragColor = vec4(gl_FragColor.r, 1.0, 0.0, 1.0);\n"
+    "}\n";
+
 GLuint load_shader(const char *shader_source, GLenum type)
 {
     GLuint  shader = glCreateShader(type);
@@ -63,6 +85,11 @@ GLuint load_shader(const char *shader_source, GLenum type)
 GLint position_loc;
 GLint texcoords_loc;
 GLint texture_loc;
+
+GLint position_mvp_loc;
+GLint texcoords_mvp_loc;
+GLint transform_mvp_loc;
+GLint texture_mvp_loc;
 
 static const GLfloat squareVertices[] = {
     -1.0f, -1.0f,
@@ -85,6 +112,76 @@ static const GLfloat textureVertices[][8] = {
         1.0f, 1.0f
     }
 };
+
+GLfloat cursorVertices[8];
+
+void ortho2D(float* mat, float left, float right, float bottom, float top)
+{
+    const float zNear = -1.0f;
+    const float zFar = 1.0f;
+    const float inv_z = 1.0f / (zFar - zNear);
+    const float inv_y = 1.0f / (top - bottom);
+    const float inv_x = 1.0f / (right - left);
+
+    // first column
+    *mat++ = (2.0f*inv_x);
+    *mat++ = (0.0f);
+    *mat++ = (0.0f);
+    *mat++ = (0.0f);
+
+    // second
+    *mat++ = (0.0f);
+    *mat++ = (2.0*inv_y);
+    *mat++ = (0.0f);
+    *mat++ = (0.0f);
+
+    // third
+    *mat++ = (0.0f);
+    *mat++ = (0.0f);
+    *mat++ = (-2.0f*inv_z);
+    *mat++ = (0.0f);
+
+    // fourth
+    *mat++ = (-(right + left)*inv_x);
+    *mat++ = (-(top + bottom)*inv_y);
+    *mat++ = (-(zFar + zNear)*inv_z);
+    *mat++ = (1.0f);
+}
+
+/* adapted from Xf86Cursor.c */
+static void
+hwc_rotate_coord_to_hw(Rotation rotation,
+                       int width,
+                       int height, int x, int y, int *x_out, int *y_out)
+{
+    int t;
+
+    if (rotation & RR_Reflect_X)
+        x = width - x - 1;
+    if (rotation & RR_Reflect_Y)
+        y = height - y - 1;
+
+    switch (rotation & 0xf) {
+    case RR_Rotate_0:
+        break;
+    case RR_Rotate_90:
+        t = x;
+        x = height - y - 1;
+        y = width - t - 1;
+        break;
+    case RR_Rotate_180:
+        x = width - x - 1;
+        y = height - y - 1;
+        break;
+    case RR_Rotate_270:
+        t = x;
+        x = y;
+        y = t;
+        break;
+    }
+    *x_out = x;
+    *y_out = y;
+}
 
 void present(void *user_data, struct ANativeWindow *window,
                                 struct ANativeWindowBuffer *buffer)
@@ -148,6 +245,20 @@ Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
     assert(hwc->glEGLImageTargetTexture2DOES != NULL);
 }
 
+void GLAPIENTRY
+MessageCallback( GLenum source,
+                 GLenum type,
+                 GLuint id,
+                 GLenum severity,
+                 GLsizei length,
+                 const GLchar* message,
+                 const void* userParam )
+{
+  fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+           ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
+            type, severity, message );
+}
+
 Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
 {
     HWCPtr hwc = HWCPTR(pScrn);
@@ -203,13 +314,20 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
 
     assert(eglMakeCurrent((EGLDisplay) display, surface, surface, context) == EGL_TRUE);
 
+    // During init, enable debug output
+    glEnable              ( GL_DEBUG_OUTPUT );
+    glDebugMessageCallback( MessageCallback, 0 );
+
+
     const char *version = glGetString(GL_VERSION);
     assert(version);
     printf("%s\n",version);
 
     glGenTextures(1, &hwc->rootTexture);
+    glGenTextures(1, &hwc->cursorTexture);
     hwc->image = EGL_NO_IMAGE_KHR;
     hwc->shaderProgram = 0;
+    hwc->shaderProgramMVP = 0;
 
     return TRUE;
 }
@@ -235,7 +353,7 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
         GLuint fragmentShader;
 
         if (hwc->glamor)
-            fragmentShader = load_shader(fragment_src ,GL_FRAGMENT_SHADER);  // load fragment shader
+            fragmentShader = load_shader(fragment_src, GL_FRAGMENT_SHADER);  // load fragment shader
         else
             fragmentShader = load_shader(fragment_src_bgra, GL_FRAGMENT_SHADER);  // load fragment shader
 
@@ -245,17 +363,97 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
 
         glLinkProgram ( shaderProgram );    // link the program
 
-        //// now get the locations (kind of handle) of the shaders variables
-        position_loc  = glGetAttribLocation  ( shaderProgram , "position" );
-        texcoords_loc = glGetAttribLocation  ( shaderProgram , "texcoords" );
-        texture_loc = glGetUniformLocation ( shaderProgram , "texture" );
+        // now get the locations of the shaders variables
+        position_loc  = glGetAttribLocation(shaderProgram, "position");
+        texcoords_loc = glGetAttribLocation(shaderProgram, "texcoords");
+        texture_loc = glGetUniformLocation(shaderProgram, "texture");
 
         if ( position_loc < 0  ||  texcoords_loc < 0 || texture_loc < 0 ) {
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "EGLRenderer_Init: failed to get shader variables locations\n");
         }
     }
 
+    if (!hwc->shaderProgramMVP)
+    {
+        GLuint vertexShader = load_shader(vertex_mvp_src, GL_VERTEX_SHADER);
+        GLuint fragmentShader;
+
+        if (hwc->glamor)
+            fragmentShader = load_shader(fragment_src_cursor, GL_FRAGMENT_SHADER);
+        else
+            fragmentShader = load_shader(fragment_src_cursor, GL_FRAGMENT_SHADER);
+
+        GLuint shaderProgram  = hwc->shaderProgramMVP = glCreateProgram();
+        glAttachShader (shaderProgram, vertexShader);
+        glAttachShader (shaderProgram, fragmentShader);
+
+        glLinkProgram (shaderProgram);
+
+        // now get the locations of the shaders variables
+        position_mvp_loc  = glGetAttribLocation(shaderProgram, "position");
+        texcoords_mvp_loc = glGetAttribLocation(shaderProgram, "texcoords");
+        transform_mvp_loc = glGetUniformLocation(shaderProgram, "transform");
+        texture_mvp_loc = glGetUniformLocation(shaderProgram, "texture");
+
+        if ( position_mvp_loc < 0  ||  texcoords_mvp_loc < 0 || texture_mvp_loc < 0 ) {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "EGLRenderer_Init: failed to get shader variables locations\n");
+        }
+    }
+
+    ortho2D(hwc->projection, 0.0f, pScrn->virtualY, 0.0f, pScrn->virtualX);
+    //rotation_matrix(hwc->rotationMatrix, 90.0f);
+    //multiply_matrix(hwc->projectionRotated, hwc->projection, hwc->rotationMatrix);
+
     eglSwapInterval(hwc->display, 0);
+}
+
+void hwc_translate_cursor(int x, int y, int width, int height, float* vertices) {
+    int w = width / 2;
+    int h = height / 2;
+    // top left
+    vertices[0] = x;
+    vertices[1] = y;
+    // top right
+    vertices[2] = x + width;
+    vertices[3] = y;
+    // bottom left
+    vertices[4] = x;
+    vertices[5] = y + height;
+    // bottom right
+    vertices[6] = x + width;
+    vertices[7] = y + height;
+}
+
+void hwc_egl_render_cursor(ScreenPtr pScreen) {
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    HWCPtr hwc = HWCPTR(pScrn);
+
+    glUseProgram(hwc->shaderProgramMVP);
+
+    glBindTexture(GL_TEXTURE_2D, hwc->cursorTexture);
+    glUniform1i(texture_mvp_loc, 0);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+
+    int x, y;
+    hwc_rotate_coord_to_hw(RR_Rotate_270, pScrn->virtualX,
+                       pScrn->virtualY, hwc->cursorX, hwc->cursorY, &x, &y);
+    hwc_translate_cursor(x, y, hwc->cursorWidth, hwc->cursorHeight, cursorVertices);
+
+    glVertexAttribPointer(position_mvp_loc, 2, GL_FLOAT, 0, 0, cursorVertices);
+    glEnableVertexAttribArray(position_mvp_loc);
+
+    glVertexAttribPointer(texcoords_mvp_loc, 2, GL_FLOAT, 0, 0, textureVertices[hwc->rotation]);
+    glEnableVertexAttribArray(texcoords_mvp_loc);
+
+    glUniformMatrix4fv(transform_mvp_loc, 1, GL_FALSE, hwc->projection);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glDisable(GL_BLEND);
+    glDisableVertexAttribArray(position_mvp_loc);
+    glDisableVertexAttribArray(texcoords_mvp_loc);
 }
 
 void hwc_egl_renderer_update(ScreenPtr pScreen)
@@ -284,6 +482,9 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
 
     glDisableVertexAttribArray(position_loc);
     glDisableVertexAttribArray(texcoords_loc);
+
+    if (hwc->cursorShown)
+        hwc_egl_render_cursor(pScreen);
 
     eglSwapBuffers (hwc->display, hwc->surface );  // get the rendered buffer to the screen
 }

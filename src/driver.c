@@ -106,12 +106,14 @@ static SymTabRec Chipsets[] = {
 typedef enum {
     OPTION_ACCEL_METHOD,
     OPTION_EGL_PLATFORM,
+    OPTION_SW_CURSOR,
     OPTION_ROTATE
 } Opts;
 
 static const OptionInfoRec Options[] = {
     { OPTION_ACCEL_METHOD, "AccelMethod", OPTV_STRING, {0}, FALSE},
     { OPTION_EGL_PLATFORM, "EGLPlatform", OPTV_STRING, {0}, FALSE},
+    { OPTION_SW_CURSOR,     "SWcursor",    OPTV_BOOLEAN,{0}, FALSE},
     { OPTION_ROTATE,       "Rotate",      OPTV_STRING, {0}, FALSE },
     { -1,               NULL,       OPTV_NONE,    {0}, FALSE }
 };
@@ -343,7 +345,7 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     GDevPtr device = xf86GetEntityInfo(pScrn->entityList[0])->device;
     xf86CrtcPtr crtc;
     xf86OutputPtr output;
-    char *s;
+    const char *s;
 
     if (flags & PROBE_DETECT)
         return TRUE;
@@ -436,6 +438,8 @@ PreInit(ScrnInfoPtr pScrn, int flags)
                     "valid options are \"CW\", \"CCW\"\n");
         }
     }
+
+	hwc->swCursor = xf86ReturnOptValBool(hwc->Options, OPTION_SW_CURSOR, FALSE);
 
     hwc_set_egl_platform(pScrn);
 
@@ -727,6 +731,16 @@ ScreenInit(SCREEN_INIT_ARGS_DECL)
 
     /* Initialise cursor functions */
     miDCInitialize (pScreen, xf86GetPointerScreenFuncs());
+
+    /* Need to extend HWcursor support to handle mask interleave */
+    if (!hwc->swCursor) {
+        hwc->cursorWidth = 64;
+        hwc->cursorHeight = 64;
+
+        xf86_cursors_init(pScreen, hwc->cursorWidth, hwc->cursorHeight,
+                          HARDWARE_CURSOR_UPDATE_UNHIDDEN |
+                          HARDWARE_CURSOR_ARGB);
+    }
 
     /* Initialise default colourmap */
     if(!miCreateDefColormap(pScreen))

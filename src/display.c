@@ -61,9 +61,67 @@ static Bool hwcomposer_set_mode_major(xf86CrtcPtr crtc, DisplayModePtr mode, Rot
     return TRUE;
 }
 
+static void
+hwc_set_cursor_colors(xf86CrtcPtr crtc, int bg, int fg)
+{
+
+}
+
+static void
+hwc_set_cursor_position(xf86CrtcPtr crtc, int x, int y)
+{
+    HWCPtr hwc = HWCPTR(crtc->scrn);
+    hwc->cursorX = x;
+    hwc->cursorY = y;
+    hwc->dirty = TRUE;
+}
+
+/*
+ * The load_cursor_argb_check driver hook.
+ *
+ * Sets the hardware cursor by uploading it to texture.
+ * On failure, returns FALSE indicating that the X server should fall
+ * back to software cursors.
+ */
+static Bool
+hwc_load_cursor_argb_check(xf86CrtcPtr crtc, CARD32 *image)
+{
+    HWCPtr hwc = HWCPTR(crtc->scrn);
+
+    glBindTexture(GL_TEXTURE_2D, hwc->cursorTexture);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, hwc->cursorWidth, hwc->cursorHeight,
+                    0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+
+    hwc->dirty = TRUE;
+    return TRUE;
+}
+
+static void
+hwc_hide_cursor(xf86CrtcPtr crtc)
+{
+    HWCPtr hwc = HWCPTR(crtc->scrn);
+    hwc->cursorShown = FALSE;
+    hwc->dirty = TRUE;
+}
+
+static void
+hwc_show_cursor(xf86CrtcPtr crtc)
+{
+    HWCPtr hwc = HWCPTR(crtc->scrn);
+    hwc->cursorShown = TRUE;
+    hwc->dirty = TRUE;
+}
+
 static const xf86CrtcFuncsRec hwcomposer_crtc_funcs = {
     .dpms = hwcomposer_crtc_dpms,
-    .set_mode_major = hwcomposer_set_mode_major
+    .set_mode_major = hwcomposer_set_mode_major,
+    .set_cursor_colors = hwc_set_cursor_colors,
+    .set_cursor_position = hwc_set_cursor_position,
+    .show_cursor = hwc_show_cursor,
+    .hide_cursor = hwc_hide_cursor,
+    .load_cursor_argb_check = hwc_load_cursor_argb_check
 };
 
 void hwc_toggle_screen_brightness(ScrnInfoPtr pScrn)

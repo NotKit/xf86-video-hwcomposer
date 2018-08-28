@@ -49,6 +49,7 @@ void hwc_egl_renderer_update(ScreenPtr pScreen);
 Bool hwc_present_screen_init(ScreenPtr pScreen);
 void hwc_vblank_screen_init(ScreenPtr pScreen);
 int hwc_queue_vblank(ScreenPtr screen, uint64_t event_id, uint64_t hwcc);
+Bool hwc_cursor_init(ScreenPtr pScreen);
 
 typedef enum {
     HWC_ROTATE_CW,
@@ -86,6 +87,13 @@ typedef struct HWCRec
     int hwcWidth;
     int hwcHeight;
 
+    Bool cursorShown;
+    xf86CursorInfoPtr cursorInfo;
+    int cursorX;
+    int cursorY;
+    int cursorWidth;
+    int cursorHeight;
+
     struct light_device_t *lightsDevice;
     int screenBrightness;
 
@@ -104,7 +112,13 @@ typedef struct HWCRec
     EGLSurface surface;
     EGLContext context;
     GLuint rootTexture;
+    GLuint cursorTexture;
     GLuint shaderProgram;
+    GLuint shaderProgramMVP;
+
+    float projection[16];
+    float rotationMatrix[16];
+    float projectionRotated[16];
 
     EGLClientBuffer buffer;
     int stride;
