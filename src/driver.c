@@ -73,6 +73,9 @@ static Bool	hwc_driver_func(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 #define HWC_MINOR_VERSION PACKAGE_VERSION_MINOR
 #define HWC_PATCHLEVEL PACKAGE_VERSION_PATCHLEVEL
 
+// For ~60 FPS
+#define TIMER_DELAY 17 /* in milliseconds */
+
 /*
  * This is intentionally screen-independent.  It indicates the binding
  * choice made in the first PreInit.
@@ -440,6 +443,10 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     }
 
 	hwc->swCursor = xf86ReturnOptValBool(hwc->Options, OPTION_SW_CURSOR, FALSE);
+    if (hwc->swCursor) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                    "hardware cursor disabled\n");
+    }
 
     hwc_set_egl_platform(pScrn);
 
@@ -552,30 +559,13 @@ static void hwcBlockHandler(ScreenPtr pScreen, void *timeout)
     pScreen->BlockHandler(pScreen, timeout);
     pScreen->BlockHandler = hwcBlockHandler;
 
-    if (hwc->damage && hwc->dpmsMode == DPMSModeOn)
-    {
+    if (hwc->damage && hwc->dpmsMode == DPMSModeOn) {
         RegionPtr dirty = DamageRegion(hwc->damage);
         unsigned num_cliprects = REGION_NUM_RECTS(dirty);
 
-        if (num_cliprects || hwc->dirty)
-        {
-            void *pixels = NULL;
-            rootPixmap = pScreen->GetScreenPixmap(pScreen);
-            hwc->eglHybrisUnlockNativeBuffer(hwc->buffer);
-
-            hwc_egl_renderer_update(pScreen);
-
-            err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
-                            HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
-                            0, 0, hwc->stride, pScrn->virtualY, &pixels);
-
-            if (!hwc->glamor) {
-                if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
-                    FatalError("Couldn't adjust screen pixmap\n");
-            }
-
+        if (num_cliprects) {
             DamageEmpty(hwc->damage);
-            hwc->dirty = FALSE;
+            hwc->dirty = TRUE;
         }
     }
 }
@@ -651,6 +641,35 @@ CreateScreenResources(ScreenPtr pScreen)
     }
 
     return ret;
+}
+
+static CARD32 hwc_update_by_timer(OsTimerPtr timer, CARD32 time, void *ptr) {
+    ScreenPtr pScreen = (ScreenPtr) ptr;
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    HWCPtr hwc = HWCPTR(pScrn);
+    PixmapPtr rootPixmap;
+    int err;
+
+    if (hwc->dirty) {
+        void *pixels = NULL;
+        rootPixmap = pScreen->GetScreenPixmap(pScreen);
+        hwc->eglHybrisUnlockNativeBuffer(hwc->buffer);
+
+        hwc_egl_renderer_update(pScreen);
+
+        err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
+                        HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
+                        0, 0, hwc->stride, pScrn->virtualY, &pixels);
+
+        if (!hwc->glamor) {
+            if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
+                FatalError("Couldn't adjust screen pixmap\n");
+        }
+
+        hwc->dirty = FALSE;
+    }
+
+    return TIMER_DELAY;
 }
 
 /* Mandatory */
@@ -794,6 +813,8 @@ ScreenInit(SCREEN_INIT_ARGS_DECL)
                     "Failed to initialize the Present extension.\n");
     }
 
+    TimerSet(hwc->timer, 0, TIMER_DELAY, hwc_update_by_timer, (void*) pScreen);
+
     return TRUE;
 }
 
@@ -816,6 +837,8 @@ CloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     HWCPtr hwc = HWCPTR(pScrn);
+
+    TimerCancel(hwc->timer);
 
     if (hwc->damage) {
         DamageUnregister(hwc->damage);

@@ -66,6 +66,7 @@ typedef struct HWCRec
     CreateScreenResourcesProcPtr	CreateScreenResources;
     xf86CursorInfoPtr CursorInfo;
     ScreenBlockHandlerProcPtr BlockHandler;
+    OsTimerPtr timer;
 
     dummy_colors colors[1024];
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
