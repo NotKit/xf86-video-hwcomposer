@@ -299,8 +299,8 @@ try_enable_glamor(ScrnInfoPtr pScrn)
     }
 
     if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
-        //if (hwc_glamor_egl_init(pScrn, hwc->display, hwc->context, hwc->surface)) {
-        if (hwc_glamor_egl_init(pScrn, hwc->display, hwc->context, hwc->surface)) {
+        if (hwc_glamor_egl_init(pScrn, hwc->renderer.display,
+                hwc->renderer.context, hwc->renderer.surface)) {
             xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor-hybris initialized\n");
             hwc->glamor = TRUE;
         } else {
@@ -442,7 +442,7 @@ PreInit(ScrnInfoPtr pScrn, int flags)
         }
     }
 
-	hwc->swCursor = xf86ReturnOptValBool(hwc->Options, OPTION_SW_CURSOR, FALSE);
+    hwc->swCursor = xf86ReturnOptValBool(hwc->Options, OPTION_SW_CURSOR, FALSE);
     if (hwc->swCursor) {
         xf86DrvMsg(pScrn->scrnIndex, X_INFO,
                     "hardware cursor disabled\n");
@@ -599,7 +599,7 @@ CreateScreenResources(ScreenPtr pScreen)
     }
 #endif
 
-    err = hwc->eglHybrisCreateNativeBuffer(pScrn->virtualX, pScrn->virtualY,
+    err = hwc->renderer.eglHybrisCreateNativeBuffer(pScrn->virtualX, pScrn->virtualY,
                                       HYBRIS_USAGE_HW_TEXTURE |
                                       HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                       HYBRIS_PIXEL_FORMAT_RGBA_8888,
@@ -611,10 +611,10 @@ CreateScreenResources(ScreenPtr pScreen)
 
 #ifdef ENABLE_GLAMOR
     if (hwc->glamor)
-        hwc->rootTexture = glamor_get_pixmap_texture(rootPixmap);
+        hwc->renderer.rootTexture = glamor_get_pixmap_texture(rootPixmap);
 #endif
 
-    err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
+    err = hwc->renderer.eglHybrisLockNativeBuffer(hwc->buffer,
                                     HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
                                     0, 0, hwc->stride, pScrn->virtualY, &pixels);
 
@@ -653,11 +653,11 @@ static CARD32 hwc_update_by_timer(OsTimerPtr timer, CARD32 time, void *ptr) {
     if (hwc->dirty) {
         void *pixels = NULL;
         rootPixmap = pScreen->GetScreenPixmap(pScreen);
-        hwc->eglHybrisUnlockNativeBuffer(hwc->buffer);
+        hwc->renderer.eglHybrisUnlockNativeBuffer(hwc->buffer);
 
         hwc_egl_renderer_update(pScreen);
 
-        err = hwc->eglHybrisLockNativeBuffer(hwc->buffer,
+        err = hwc->renderer.eglHybrisLockNativeBuffer(hwc->buffer,
                         HYBRIS_USAGE_SW_READ_OFTEN|HYBRIS_USAGE_SW_WRITE_OFTEN,
                         0, 0, hwc->stride, pScrn->virtualY, &pixels);
 
@@ -850,8 +850,8 @@ CloseScreen(CLOSE_SCREEN_ARGS_DECL)
 
     if (hwc->buffer != NULL)
     {
-        hwc->eglHybrisUnlockNativeBuffer(hwc->buffer);
-        hwc->eglHybrisReleaseNativeBuffer(hwc->buffer);
+        hwc->renderer.eglHybrisUnlockNativeBuffer(hwc->buffer);
+        hwc->renderer.eglHybrisReleaseNativeBuffer(hwc->buffer);
         hwc->buffer = NULL;
     }
 

@@ -40,21 +40,54 @@ Bool hwc_display_pre_init(ScrnInfoPtr pScrn);
 Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn);
 void hwc_hwcomposer_close(ScrnInfoPtr pScrn);
 Bool hwc_lights_init(ScrnInfoPtr pScrn);
+
 Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn);
 Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn);
 void hwc_egl_renderer_close(ScrnInfoPtr pScrn);
 void hwc_egl_renderer_screen_init(ScreenPtr pScreen);
 void hwc_egl_renderer_screen_close(ScreenPtr pScreen);
 void hwc_egl_renderer_update(ScreenPtr pScreen);
+
+void hwc_ortho_2d(float* mat, float left, float right, float bottom, float top);
+GLuint hwc_link_program(const GLchar *vert_src, const GLchar *frag_src);
+
 Bool hwc_present_screen_init(ScreenPtr pScreen);
-void hwc_vblank_screen_init(ScreenPtr pScreen);
-int hwc_queue_vblank(ScreenPtr screen, uint64_t event_id, uint64_t hwcc);
 Bool hwc_cursor_init(ScreenPtr pScreen);
 
 typedef enum {
     HWC_ROTATE_CW,
     HWC_ROTATE_CCW
 } hwc_rotation;
+
+typedef struct {
+	GLuint program;
+    GLint position;
+    GLint texcoords;
+    GLint transform;
+    GLint texture;
+} hwc_renderer_shader;
+
+typedef struct {
+    PFNEGLHYBRISCREATENATIVEBUFFERPROC eglHybrisCreateNativeBuffer;
+    PFNEGLHYBRISLOCKNATIVEBUFFERPROC eglHybrisLockNativeBuffer;
+    PFNEGLHYBRISUNLOCKNATIVEBUFFERPROC eglHybrisUnlockNativeBuffer;
+    PFNEGLHYBRISRELEASENATIVEBUFFERPROC eglHybrisReleaseNativeBuffer;
+    PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
+    PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
+    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
+
+    EGLDisplay display;
+    EGLSurface surface;
+    EGLContext context;
+    GLuint rootTexture;
+    GLuint cursorTexture;
+
+    float projection[16];
+    EGLImageKHR image;
+
+    hwc_renderer_shader rootShader;
+    hwc_renderer_shader projShader;
+} hwc_renderer_rec, *hwc_renderer_ptr;
 
 typedef struct HWCRec
 {
@@ -88,6 +121,10 @@ typedef struct HWCRec
     int hwcWidth;
     int hwcHeight;
 
+    hwc_renderer_rec renderer;
+    EGLClientBuffer buffer;
+    int stride;
+
     Bool cursorShown;
     xf86CursorInfoPtr cursorInfo;
     int cursorX;
@@ -100,30 +137,6 @@ typedef struct HWCRec
 
     DisplayModePtr modes;
     int dpmsMode;
-
-    PFNEGLHYBRISCREATENATIVEBUFFERPROC eglHybrisCreateNativeBuffer;
-    PFNEGLHYBRISLOCKNATIVEBUFFERPROC eglHybrisLockNativeBuffer;
-    PFNEGLHYBRISUNLOCKNATIVEBUFFERPROC eglHybrisUnlockNativeBuffer;
-    PFNEGLHYBRISRELEASENATIVEBUFFERPROC eglHybrisReleaseNativeBuffer;
-    PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
-    PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
-    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
-
-    EGLDisplay display;
-    EGLSurface surface;
-    EGLContext context;
-    GLuint rootTexture;
-    GLuint cursorTexture;
-    GLuint shaderProgram;
-    GLuint shaderProgramMVP;
-
-    float projection[16];
-    float rotationMatrix[16];
-    float projectionRotated[16];
-
-    EGLClientBuffer buffer;
-    int stride;
-    EGLImageKHR image;
 } HWCRec, *HWCPtr;
 
 /* The privates of the hwcomposer driver */

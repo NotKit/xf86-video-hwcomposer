@@ -88,7 +88,7 @@ hwc_load_cursor_argb_check(xf86CrtcPtr crtc, CARD32 *image)
 {
     HWCPtr hwc = HWCPTR(crtc->scrn);
 
-    glBindTexture(GL_TEXTURE_2D, hwc->cursorTexture);
+    glBindTexture(GL_TEXTURE_2D, hwc->renderer.cursorTexture);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, hwc->cursorWidth, hwc->cursorHeight,

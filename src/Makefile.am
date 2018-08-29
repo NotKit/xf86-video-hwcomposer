@@ -37,6 +37,8 @@ hwcomposer_drv_la_SOURCES = \
          display.c \
          driver.c \
          driver.h \
+         glutils.c \
          hwcomposer.c \
          present.c \
-         renderer.c
+         renderer.c \
+         shaders.c
