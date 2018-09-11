@@ -146,6 +146,7 @@ Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
 
     renderer->glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES");
     assert(renderer->glEGLImageTargetTexture2DOES != NULL);
+    return TRUE;
 }
 
 void GLAPIENTRY
@@ -192,6 +193,7 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     int err;
 
     struct ANativeWindow *win = HWCNativeWindowCreate(hwc->hwcWidth, hwc->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
+    win->setup(hwc->gralloc, hwc->alloc);
 
     display = eglGetDisplay(NULL);
     assert(eglGetError() == EGL_SUCCESS);
