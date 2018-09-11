@@ -85,36 +85,6 @@ hwc_rotate_coord_to_hw(Rotation rotation,
     *y_out = y;
 }
 
-void present(void *user_data, struct ANativeWindow *window,
-                                struct ANativeWindowBuffer *buffer)
-{
-    ScrnInfoPtr pScrn = (ScrnInfoPtr)user_data;
-    HWCPtr hwc = HWCPTR(pScrn);
-
-    hwc_display_contents_1_t **contents = hwc->hwcContents;
-    hwc_layer_1_t *fblayer = hwc->fblayer;
-    hwc_composer_device_1_t *hwcdevice = hwc->hwcDevicePtr;
-
-    int oldretire = contents[0]->retireFenceFd;
-    contents[0]->retireFenceFd = -1;
-
-    fblayer->handle = buffer->handle;
-    fblayer->acquireFenceFd = HWCNativeBufferGetFence(buffer);
-    fblayer->releaseFenceFd = -1;
-    int err = hwcdevice->prepare(hwcdevice, HWC_NUM_DISPLAY_TYPES, contents);
-    assert(err == 0);
-
-    err = hwcdevice->set(hwcdevice, HWC_NUM_DISPLAY_TYPES, contents);
-    // in android surfaceflinger ignores the return value as not all display types may be supported
-    HWCNativeBufferSetFence(buffer, fblayer->releaseFenceFd);
-
-    if (oldretire != -1)
-    {
-        sync_wait(oldretire, -1);
-        close(oldretire);
-    }
-}
-
 Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
 {
     HWCPtr hwc = HWCPTR(pScrn);
@@ -146,6 +116,7 @@ Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
 
     renderer->glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES");
     assert(renderer->glEGLImageTargetTexture2DOES != NULL);
+    return TRUE;
 }
 
 void GLAPIENTRY
@@ -191,7 +162,7 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     EGLBoolean rv;
     int err;
 
-    struct ANativeWindow *win = HWCNativeWindowCreate(hwc->hwcWidth, hwc->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
+    struct ANativeWindow *win = hwc_get_native_window(pScrn);
 
     display = eglGetDisplay(NULL);
     assert(eglGetError() == EGL_SUCCESS);
@@ -361,6 +332,8 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
     glVertexAttribPointer(renderer->rootShader.texcoords, 2, GL_FLOAT, 0, 0, textureVertices[hwc->rotation]);
     glEnableVertexAttribArray(renderer->rootShader.texcoords);
 
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     glDisableVertexAttribArray(renderer->rootShader.position);
