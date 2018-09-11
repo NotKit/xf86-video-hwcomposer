@@ -61,26 +61,26 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 
 #ifdef HWC_DEVICE_API_VERSION_1_4
 	if (hwc_version == HWC_DEVICE_API_VERSION_1_4) {
-		hwcDevicePtr->setPowerMode(hwcDevicePtr, 0, HWC_POWER_MODE_NORMAL);
+		hwcDevicePtr->setPowerMode(hwcDevicePtr, HWC_DISPLAY_PRIMARY, HWC_POWER_MODE_NORMAL);
 	} else
 #endif
 #ifdef HWC_DEVICE_API_VERSION_1_5
 	if (hwc_version == HWC_DEVICE_API_VERSION_1_5) {
-		hwcDevicePtr->setPowerMode(hwcDevicePtr, 0, HWC_POWER_MODE_NORMAL);
+		hwcDevicePtr->setPowerMode(hwcDevicePtr, HWC_DISPLAY_PRIMARY, HWC_POWER_MODE_NORMAL);
 	} else
 #endif
-		hwcDevicePtr->blank(hwcDevicePtr, 0, 0);
+		hwcDevicePtr->blank(hwcDevicePtr, HWC_DISPLAY_PRIMARY, 0);
 
 	uint32_t configs[5];
 	size_t numConfigs = 5;
 
-	err = hwcDevicePtr->getDisplayConfigs(hwcDevicePtr, 0, configs, &numConfigs);
+	err = hwcDevicePtr->getDisplayConfigs(hwcDevicePtr, HWC_DISPLAY_PRIMARY, configs, &numConfigs);
 	assert (err == 0);
 
 	int32_t attr_values[2];
 	uint32_t attributes[] = { HWC_DISPLAY_WIDTH, HWC_DISPLAY_HEIGHT, HWC_DISPLAY_NO_ATTRIBUTE };
 
-	hwcDevicePtr->getDisplayAttributes(hwcDevicePtr, 0,
+	hwcDevicePtr->getDisplayAttributes(hwcDevicePtr, HWC_DISPLAY_PRIMARY,
 			configs[0], attributes, attr_values);
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "width: %i height: %i\n", attr_values[0], attr_values[1]);

@@ -156,11 +156,11 @@ hwc_output_dpms(xf86OutputPtr output, int mode)
 
 #if defined(HWC_DEVICE_API_VERSION_1_4) || defined(HWC_DEVICE_API_VERSION_1_5)
     if (hwc->hwcVersion > HWC_DEVICE_API_VERSION_1_3)
-        hwc->hwcDevicePtr->setPowerMode(hwc->hwcDevicePtr, 0,
+        hwc->hwcDevicePtr->setPowerMode(hwc->hwcDevicePtr, HWC_DISPLAY_PRIMARY,
             mode == DPMSModeOn ? HWC_POWER_MODE_NORMAL : HWC_POWER_MODE_OFF);
     else
 #endif
-        hwc->hwcDevicePtr->blank(hwc->hwcDevicePtr, 0,
+        hwc->hwcDevicePtr->blank(hwc->hwcDevicePtr, HWC_DISPLAY_PRIMARY,
             mode == DPMSModeOn ? 0 : 1);
 
     if (mode == DPMSModeOn)
