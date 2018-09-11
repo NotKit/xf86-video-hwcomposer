@@ -146,6 +146,7 @@ Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
 
     renderer->glEGLImageTargetTexture2DOES = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES");
     assert(renderer->glEGLImageTargetTexture2DOES != NULL);
+    return TRUE;
 }
 
 void GLAPIENTRY
@@ -192,6 +193,7 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn)
     int err;
 
     struct ANativeWindow *win = HWCNativeWindowCreate(hwc->hwcWidth, hwc->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
+    win->setup(hwc->gralloc, hwc->alloc);
 
     display = eglGetDisplay(NULL);
     assert(eglGetError() == EGL_SUCCESS);
@@ -361,6 +363,8 @@ void hwc_egl_renderer_update(ScreenPtr pScreen)
     glVertexAttribPointer(renderer->rootShader.texcoords, 2, GL_FLOAT, 0, 0, textureVertices[hwc->rotation]);
     glEnableVertexAttribArray(renderer->rootShader.texcoords);
 
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     glDisableVertexAttribArray(renderer->rootShader.position);

@@ -298,7 +298,9 @@ try_enable_glamor(ScrnInfoPtr pScrn)
         return;
     }
 
+#ifndef __ANDROID__
     if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
+#endif // __ANDROID__
         if (hwc_glamor_egl_init(pScrn, hwc->renderer.display,
                 hwc->renderer.context, hwc->renderer.surface)) {
             xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor-hybris initialized\n");
@@ -307,12 +309,16 @@ try_enable_glamor(ScrnInfoPtr pScrn)
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                        "glamor-hybris initialization failed\n");
         }
+#ifndef __ANDROID__
     } else {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                    "Failed to load glamor-hybris module.\n");
     }
+#endif // __ANDROID__
 #ifdef ENABLE_DRIHYBRIS
+#ifndef __ANDROID__
     if (xf86LoadSubModule(pScrn, "drihybris"))
+#endif
     {
         hwc->drihybris = TRUE;
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "drihybris initialized\n");
@@ -466,13 +472,17 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     /* If monitor resolution is set on the command line, use it */
     xf86SetDpi(pScrn, 0, 0);
 
+#ifndef __ANDROID__
     if (xf86LoadSubModule(pScrn, "fb") == NULL) {
         RETURN;
     }
+#endif // __ANDROID__
 
     if (!hwc->swCursor) {
+#ifndef __ANDROID__
         if (!xf86LoadSubModule(pScrn, "ramdac"))
             RETURN;
+#endif // __ANDROID__
     }
 
     /* We have no contiguous physical fb in physical memory */
