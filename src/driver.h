@@ -41,6 +41,10 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn);
 void hwc_hwcomposer_close(ScrnInfoPtr pScrn);
 Bool hwc_lights_init(ScrnInfoPtr pScrn);
 
+struct ANativeWindow *hwc_get_native_window(ScrnInfoPtr pScrn);
+void hwc_toggle_screen_brightness(ScrnInfoPtr pScrn);
+void hwc_set_power_mode(ScrnInfoPtr pScrn, int disp, int mode);
+
 Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn);
 Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn);
 void hwc_egl_renderer_close(ScrnInfoPtr pScrn);

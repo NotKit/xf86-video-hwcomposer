@@ -124,26 +124,6 @@ static const xf86CrtcFuncsRec hwcomposer_crtc_funcs = {
     .load_cursor_argb_check = hwc_load_cursor_argb_check
 };
 
-void hwc_toggle_screen_brightness(ScrnInfoPtr pScrn)
-{
-    HWCPtr hwc = HWCPTR(pScrn);
-    struct light_state_t state;
-    int brightness;
-
-    if (!hwc->lightsDevice) {
-        return;
-    }
-    brightness = (hwc->dpmsMode == DPMSModeOn) ?
-                            hwc->screenBrightness : 0;
-
-    state.flashMode = LIGHT_FLASH_NONE;
-    state.brightnessMode = BRIGHTNESS_MODE_USER;
-
-    state.color = (int)((0xffU << 24) | (brightness << 16) |
-                        (brightness << 8) | brightness);
-    hwc->lightsDevice->set_light(hwc->lightsDevice, &state);
-}
-
 static void
 hwc_output_dpms(xf86OutputPtr output, int mode)
 {
@@ -154,14 +134,7 @@ hwc_output_dpms(xf86OutputPtr output, int mode)
     hwc->dpmsMode = mode;
     hwc_toggle_screen_brightness(pScrn);
 
-#if defined(HWC_DEVICE_API_VERSION_1_4) || defined(HWC_DEVICE_API_VERSION_1_5)
-    if (hwc->hwcVersion > HWC_DEVICE_API_VERSION_1_3)
-        hwc->hwcDevicePtr->setPowerMode(hwc->hwcDevicePtr, HWC_DISPLAY_PRIMARY,
-            mode == DPMSModeOn ? HWC_POWER_MODE_NORMAL : HWC_POWER_MODE_OFF);
-    else
-#endif
-        hwc->hwcDevicePtr->blank(hwc->hwcDevicePtr, HWC_DISPLAY_PRIMARY,
-            mode == DPMSModeOn ? 0 : 1);
+    hwc_set_power_mode(pScrn, HWC_DISPLAY_PRIMARY, (mode == DPMSModeOn) ? 1 : 0);
 
     if (mode == DPMSModeOn)
         // Force redraw after unblank
