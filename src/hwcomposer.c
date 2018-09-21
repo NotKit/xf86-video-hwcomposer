@@ -5,14 +5,16 @@
 #include <string.h>
 #include "xf86.h"
 
-#include <android-config.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <stddef.h>
 #include <malloc.h>
+
+#include <android-config.h>
 #include <sync/sync.h>
+#include <hybris/hwcomposerwindow/hwcomposer.h>
 
 #include "driver.h"
 

@@ -11,14 +11,6 @@
 #include <math.h>
 #include <stddef.h>
 
-#include <malloc.h>
-#include <sync/sync.h>
-#include <hybris/hwcomposerwindow/hwcomposer.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
 #include "driver.h"
 
 extern const char vertex_src[];
