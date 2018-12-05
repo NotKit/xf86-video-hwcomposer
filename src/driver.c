@@ -298,6 +298,16 @@ try_enable_glamor(ScrnInfoPtr pScrn)
         return;
     }
 
+#ifdef ENABLE_DRIHYBRIS
+#ifndef __ANDROID__
+    if (xf86LoadSubModule(pScrn, "drihybris"))
+#endif
+    {
+        hwc->drihybris = TRUE;
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "drihybris initialized\n");
+    }
+#endif
+
 #ifndef __ANDROID__
     if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
 #endif // __ANDROID__
@@ -315,15 +325,6 @@ try_enable_glamor(ScrnInfoPtr pScrn)
                    "Failed to load glamor-hybris module.\n");
     }
 #endif // __ANDROID__
-#ifdef ENABLE_DRIHYBRIS
-#ifndef __ANDROID__
-    if (xf86LoadSubModule(pScrn, "drihybris"))
-#endif
-    {
-        hwc->drihybris = TRUE;
-        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "drihybris initialized\n");
-    }
-#endif
 }
 #endif
 
