@@ -430,12 +430,16 @@ PreInit(ScrnInfoPtr pScrn, int flags)
     xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, hwc->Options);
 
     /* rotation */
-    hwc->rotation = HWC_ROTATE_CW;
+    hwc->rotation = HWC_ROTATE_NORMAL;
     if ((s = xf86GetOptValString(hwc->Options, OPTION_ROTATE)))
     {
         if(!xf86NameCmp(s, "CW")) {
             hwc->rotation = HWC_ROTATE_CW;
             xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "rotating screen clockwise\n");
+        }
+        else if(!xf86NameCmp(s, "UD")) {
+            hwc->rotation = HWC_ROTATE_UD;
+            xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "rotating screen upside-down\n");
         }
         else if(!xf86NameCmp(s, "CCW")) {
             hwc->rotation = HWC_ROTATE_CCW;
@@ -445,7 +449,7 @@ PreInit(ScrnInfoPtr pScrn, int flags)
             xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
                     "\"%s\" is not a valid value for Option \"Rotate\"\n", s);
             xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                    "valid options are \"CW\", \"CCW\"\n");
+                    "valid options are \"CW\", \"UD\", \"CCW\"\n");
         }
     }
 

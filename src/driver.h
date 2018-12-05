@@ -59,7 +59,9 @@ Bool hwc_present_screen_init(ScreenPtr pScreen);
 Bool hwc_cursor_init(ScreenPtr pScreen);
 
 typedef enum {
+    HWC_ROTATE_NORMAL,
     HWC_ROTATE_CW,
+    HWC_ROTATE_UD,
     HWC_ROTATE_CCW
 } hwc_rotation;
 

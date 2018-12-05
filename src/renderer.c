@@ -26,11 +26,23 @@ static const GLfloat squareVertices[] = {
 };
 
 static const GLfloat textureVertices[][8] = {
+    { // NORMAL - 0 degrees
+        0.0f,  1.0f,
+        1.0f, 1.0f,
+        0.0f,  0.0f,
+        1.0f, 0.0f,
+    },
     { // CW - 90 degrees
         1.0f, 1.0f,
         1.0f, 0.0f,
         0.0f,  1.0f,
         0.0f,  0.0f,
+    },
+    { // UD - 180 degrees
+        1.0f, 0.0f,
+        0.0f,  0.0f,
+        1.0f, 1.0f,
+        0.0f,  1.0f,
     },
     { // CCW - 270 degrees
         0.0f,  0.0f,
@@ -41,41 +53,6 @@ static const GLfloat textureVertices[][8] = {
 };
 
 GLfloat cursorVertices[8];
-
-/* adapted from Xf86Cursor.c */
-static void
-hwc_rotate_coord_to_hw(Rotation rotation,
-                       int width,
-                       int height, int x, int y, int *x_out, int *y_out)
-{
-    int t;
-
-    if (rotation & RR_Reflect_X)
-        x = width - x - 1;
-    if (rotation & RR_Reflect_Y)
-        y = height - y - 1;
-
-    switch (rotation & 0xf) {
-    case RR_Rotate_0:
-        break;
-    case RR_Rotate_90:
-        t = x;
-        x = height - y - 1;
-        y = width - t - 1;
-        break;
-    case RR_Rotate_180:
-        x = width - x - 1;
-        y = height - y - 1;
-        break;
-    case RR_Rotate_270:
-        t = x;
-        x = y;
-        y = t;
-        break;
-    }
-    *x_out = x;
-    *y_out = y;
-}
 
 Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
 {
@@ -246,26 +223,62 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
         renderer->projShader.texture = glGetUniformLocation(prog, "texture");
     }
 
-    hwc_ortho_2d(renderer->projection, 0.0f, pScrn->virtualY, 0.0f, pScrn->virtualX);
+    if (hwc->rotation == HWC_ROTATE_CW || hwc->rotation == HWC_ROTATE_CCW)
+        hwc_ortho_2d(renderer->projection, 0.0f, pScrn->virtualY, 0.0f, pScrn->virtualX);
+    else
+        hwc_ortho_2d(renderer->projection, 0.0f, pScrn->virtualX, 0.0f, pScrn->virtualY);
 
     eglSwapInterval(renderer->display, 0);
 }
 
-void hwc_translate_cursor(int x, int y, int width, int height, float* vertices) {
-    int w = width / 2;
-    int h = height / 2;
-    // top left
-    vertices[0] = x;
-    vertices[1] = y;
-    // top right
-    vertices[2] = x + width;
-    vertices[3] = y;
-    // bottom left
-    vertices[4] = x;
-    vertices[5] = y + height;
-    // bottom right
-    vertices[6] = x + width;
-    vertices[7] = y + height;
+void hwc_translate_cursor(hwc_rotation rotation, int x, int y, int width, int height,
+                          int displayWidth, int displayHeight,
+                          float* vertices) {
+    int w = displayWidth, h = displayHeight;
+    int cw = width, ch = height;
+    int t;
+    int i = 0;
+
+    #define P(x, y) vertices[i++] = x;  vertices[i++] = y; // Point vertex
+    switch (rotation) {
+    case HWC_ROTATE_NORMAL:
+        y = h - y - ch - 1;
+
+        P(x, y);
+        P(x + cw, y);
+        P(x, y + ch);
+        P(x + cw, y + ch);
+        break;
+    case HWC_ROTATE_CW:
+        t = x;
+        x = h - y - 1;
+        y = w - t - 1;
+
+        P(x - ch, y - cw);
+        P(x, y - cw);
+        P(x - ch, y);
+        P(x, y);
+        break;
+    case HWC_ROTATE_UD:
+        x = w - x - 1;
+
+        P(x - cw, y);
+        P(x, y);
+        P(x - cw, y + ch);
+        P(x, y + ch);
+        break;
+    case HWC_ROTATE_CCW:
+        t = x;
+        x = y;
+        y = t;
+
+        P(x, y);
+        P(x + ch, y);
+        P(x, y + cw);
+        P(x + ch, y + cw);
+        break;
+    }
+    #undef P
 }
 
 void hwc_egl_render_cursor(ScreenPtr pScreen) {
@@ -281,10 +294,10 @@ void hwc_egl_render_cursor(ScreenPtr pScreen) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
 
-    int x, y;
-    hwc_rotate_coord_to_hw(RR_Rotate_270, pScrn->virtualX,
-                       pScrn->virtualY, hwc->cursorX, hwc->cursorY, &x, &y);
-    hwc_translate_cursor(x, y, hwc->cursorWidth, hwc->cursorHeight, cursorVertices);
+    hwc_translate_cursor(hwc->rotation, hwc->cursorX, hwc->cursorY,
+                         hwc->cursorWidth, hwc->cursorHeight,
+                         pScrn->virtualX, pScrn->virtualY,
+                         cursorVertices);
 
     glVertexAttribPointer(renderer->projShader.position, 2, GL_FLOAT, 0, 0, cursorVertices);
     glEnableVertexAttribArray(renderer->projShader.position);
