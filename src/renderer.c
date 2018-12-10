@@ -158,9 +158,9 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn, Bool do_glamor)
 
     if (do_glamor) {
         // Create shared context for glamor
-        hwc->glamorContext = eglCreateContext(hwc->display, ecfg, context, ctxattr);
+        renderer->glamorContext = eglCreateContext(renderer->display, ecfg, context, ctxattr);
         assert(eglGetError() == EGL_SUCCESS);
-        assert(hwc->glamorContext != EGL_NO_CONTEXT);
+        assert(renderer->glamorContext != EGL_NO_CONTEXT);
     }
 
     assert(eglMakeCurrent((EGLDisplay) display, surface, surface, context) == EGL_TRUE);
@@ -179,10 +179,10 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn, Bool do_glamor)
     renderer->image = EGL_NO_IMAGE_KHR;
     renderer->rootShader.program = 0;
     renderer->projShader.program = 0;
+    renderer->fence = EGL_NO_SYNC_KHR;
 
     // Release context so it can be used in different thread
-    assert(eglMakeCurrent(hwc->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) == EGL_TRUE);
-
+    assert(eglMakeCurrent(renderer->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) == EGL_TRUE);
 
     return TRUE;
 }
@@ -193,7 +193,7 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
     HWCPtr hwc = HWCPTR(pScrn);
     hwc_renderer_ptr renderer = &hwc->renderer;
 
-    int result = eglMakeCurrent(hwc->display, hwc->surface, hwc->surface, hwc->context);
+    int result = eglMakeCurrent(renderer->display, renderer->surface, renderer->surface, renderer->context);
     printf("%d %d\n", result, eglGetError());
     assert(result == EGL_TRUE);
 
@@ -242,8 +242,6 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
         hwc_ortho_2d(renderer->projection, 0.0f, pScrn->virtualY, 0.0f, pScrn->virtualX);
     else
         hwc_ortho_2d(renderer->projection, 0.0f, pScrn->virtualX, 0.0f, pScrn->virtualY);
-
-    eglSwapInterval(renderer->display, 0);
 }
 
 void hwc_translate_cursor(hwc_rotation rotation, int x, int y, int width, int height,
@@ -334,20 +332,22 @@ void *hwc_egl_renderer_thread(void *user_data)
     ScreenPtr pScreen = (ScreenPtr)user_data;
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     HWCPtr hwc = HWCPTR(pScrn);
+    hwc_renderer_ptr renderer = &hwc->renderer;
 
     hwc_egl_renderer_screen_init(pScreen);
-    // assert(eglMakeCurrent(hwc->display, hwc->surface, hwc->surface, hwc->context) == EGL_TRUE);
 
     while (hwc->rendererIsRunning) {
-        pthread_mutex_lock(&(hwc->rendererMutex));
-
         if (hwc->dirty) {
+            if (renderer->fence != EGL_NO_SYNC_KHR) {
+                eglClientWaitSyncKHR(renderer->display,
+                    renderer->fence,
+                    EGL_SYNC_FLUSH_COMMANDS_BIT_KHR,
+                    EGL_FOREVER_KHR);
+            }
             hwc->dirty = FALSE;
             hwc_egl_renderer_update(pScreen);
-            pthread_mutex_unlock(&(hwc->rendererMutex));
         } else {
-            pthread_mutex_unlock(&(hwc->rendererMutex));
-            usleep(1000);
+            usleep(1000); // TODO: replace with conditional variable
         }
     }
 
