@@ -73,7 +73,7 @@ hwc_set_cursor_position(xf86CrtcPtr crtc, int x, int y)
     HWCPtr hwc = HWCPTR(crtc->scrn);
     hwc->cursorX = x;
     hwc->cursorY = y;
-    hwc->dirty = TRUE;
+    hwc_trigger_redraw(crtc->scrn);
 }
 
 /*
@@ -94,7 +94,7 @@ hwc_load_cursor_argb_check(xf86CrtcPtr crtc, CARD32 *image)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, hwc->cursorWidth, hwc->cursorHeight,
                     0, GL_RGBA, GL_UNSIGNED_BYTE, image);
 
-    hwc->dirty = TRUE;
+    hwc_trigger_redraw(crtc->scrn);
     return TRUE;
 }
 
@@ -103,7 +103,7 @@ hwc_hide_cursor(xf86CrtcPtr crtc)
 {
     HWCPtr hwc = HWCPTR(crtc->scrn);
     hwc->cursorShown = FALSE;
-    hwc->dirty = TRUE;
+    hwc_trigger_redraw(crtc->scrn);
 }
 
 static void
@@ -111,7 +111,7 @@ hwc_show_cursor(xf86CrtcPtr crtc)
 {
     HWCPtr hwc = HWCPTR(crtc->scrn);
     hwc->cursorShown = TRUE;
-    hwc->dirty = TRUE;
+    hwc_trigger_redraw(crtc->scrn);
 }
 
 static const xf86CrtcFuncsRec hwcomposer_crtc_funcs = {
@@ -134,11 +134,21 @@ hwc_output_dpms(xf86OutputPtr output, int mode)
     hwc->dpmsMode = mode;
     hwc_toggle_screen_brightness(pScrn);
 
+    if (mode != DPMSModeOn)
+    {
+        // Wait for the renderer thread to finish to avoid causing locks
+        pthread_mutex_lock(&(hwc->dirtyLock));
+        hwc->dirty = FALSE;
+        pthread_mutex_unlock(&(hwc->dirtyLock));
+    }
+
+    pthread_mutex_lock(&(hwc->rendererLock));
     hwc_set_power_mode(pScrn, HWC_DISPLAY_PRIMARY, (mode == DPMSModeOn) ? 1 : 0);
+    pthread_mutex_unlock(&(hwc->rendererLock));
 
     if (mode == DPMSModeOn)
         // Force redraw after unblank
-        hwc->dirty = TRUE;
+        hwc_trigger_redraw(pScrn);
 }
 
 static xf86OutputStatus
@@ -169,6 +179,17 @@ static const xf86OutputFuncsRec hwc_output_funcs = {
     .mode_valid = hwc_output_mode_valid,
     .get_modes = hwc_output_get_modes
 };
+
+void
+hwc_trigger_redraw(ScrnInfoPtr pScrn)
+{
+    HWCPtr hwc = HWCPTR(pScrn);
+
+    pthread_mutex_lock(&(hwc->dirtyLock));
+    hwc->dirty = TRUE;
+    pthread_cond_signal(&(hwc->dirtyCond));
+    pthread_mutex_unlock(&(hwc->dirtyLock));
+}
 
 Bool
 hwc_display_pre_init(ScrnInfoPtr pScrn)

@@ -337,18 +337,24 @@ void *hwc_egl_renderer_thread(void *user_data)
     hwc_egl_renderer_screen_init(pScreen);
 
     while (hwc->rendererIsRunning) {
-        if (hwc->dirty) {
-            if (renderer->fence != EGL_NO_SYNC_KHR) {
-                eglClientWaitSyncKHR(renderer->display,
-                    renderer->fence,
-                    EGL_SYNC_FLUSH_COMMANDS_BIT_KHR,
-                    EGL_FOREVER_KHR);
-            }
-            hwc->dirty = FALSE;
-            hwc_egl_renderer_update(pScreen);
-        } else {
-            usleep(1000); // TODO: replace with conditional variable
+        pthread_mutex_lock(&(hwc->dirtyLock));
+
+        while (!hwc->dirty) {
+            pthread_cond_wait(&(hwc->dirtyCond), &(hwc->dirtyLock));
         }
+
+        hwc->dirty = FALSE;
+        pthread_mutex_unlock(&(hwc->dirtyLock));
+
+        pthread_mutex_lock(&(hwc->rendererLock));
+        if (renderer->fence != EGL_NO_SYNC_KHR) {
+            eglClientWaitSyncKHR(renderer->display,
+                renderer->fence,
+                EGL_SYNC_FLUSH_COMMANDS_BIT_KHR,
+                EGL_FOREVER_KHR);
+        }
+        hwc_egl_renderer_update(pScreen);
+        pthread_mutex_unlock(&(hwc->rendererLock));
     }
 
     hwc_egl_renderer_screen_close(pScreen);
