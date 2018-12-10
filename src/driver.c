@@ -598,7 +598,7 @@ static void hwcBlockHandler(ScreenPtr pScreen, void *timeout)
                 renderer->fence = eglCreateSyncKHR(renderer->display,
                                                    EGL_SYNC_FENCE_KHR, NULL);
             }
-            hwc->dirty = TRUE;
+            hwc_trigger_redraw(pScrn);
         }
     }
 }
@@ -642,7 +642,9 @@ CreateScreenResources(ScreenPtr pScreen)
 
     hwc->rendererIsRunning = 1;
 
-    if (pthread_mutex_init(&(hwc->rendererMutex), NULL) ||
+    if (pthread_mutex_init(&(hwc->rendererLock), NULL) ||
+        pthread_mutex_init(&(hwc->dirtyLock), NULL) ||
+        pthread_cond_init(&(hwc->dirtyCond), NULL) ||
         pthread_create(&(hwc->rendererThread), NULL, hwc_egl_renderer_thread, pScreen)) {
         FatalError("Error creating rendering thread\n");
     }
@@ -885,7 +887,9 @@ CloseScreen(CLOSE_SCREEN_ARGS_DECL)
     hwc->rendererIsRunning = 0;
 
     pthread_join(hwc->rendererThread, NULL);
-    pthread_mutex_destroy(&(hwc->rendererMutex));
+    pthread_mutex_destroy(&(hwc->rendererLock));
+    pthread_mutex_destroy(&(hwc->dirtyLock));
+    pthread_cond_destroy(&(hwc->dirtyCond));
 
     if (hwc->buffer != NULL)
     {
