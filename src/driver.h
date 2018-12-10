@@ -92,6 +92,7 @@ typedef struct {
 
     float projection[16];
     EGLImageKHR image;
+    EGLSyncKHR fence;
 
     hwc_renderer_shader rootShader;
     hwc_renderer_shader projShader;

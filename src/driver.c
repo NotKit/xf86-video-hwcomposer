@@ -571,6 +571,7 @@ static void hwcBlockHandler(ScreenPtr pScreen, void *timeout)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     HWCPtr hwc = HWCPTR(pScrn);
+    hwc_renderer_ptr renderer = &hwc->renderer;
     PixmapPtr rootPixmap;
     int err;
 
@@ -584,6 +585,19 @@ static void hwcBlockHandler(ScreenPtr pScreen, void *timeout)
 
         if (num_cliprects) {
             DamageEmpty(hwc->damage);
+            if (hwc->glamor) {
+                /* create EGL sync object so renderer thread could wait for
+                 * glamor to flush commands pipeline */
+                /* (just glFlush which is called in glamor's blockHandler
+                   is not enough on Mali to get the buffer updated) */
+                if (renderer->fence != EGL_NO_SYNC_KHR) {
+                    EGLSyncKHR fence = renderer->fence;
+                    renderer->fence = EGL_NO_SYNC_KHR;
+                    eglDestroySyncKHR(renderer->display, fence);
+                }
+                renderer->fence = eglCreateSyncKHR(renderer->display,
+                                                   EGL_SYNC_FENCE_KHR, NULL);
+            }
             hwc->dirty = TRUE;
         }
     }
@@ -836,8 +850,6 @@ ScreenInit(SCREEN_INIT_ARGS_DECL)
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                     "Failed to initialize the Present extension.\n");
     }
-
-    TimerSet(hwc->timer, 0, TIMER_DELAY, hwc_update_by_timer, (void*) pScreen);
 
     return TRUE;
 }
