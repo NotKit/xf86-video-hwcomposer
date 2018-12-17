@@ -885,6 +885,7 @@ CloseScreen(CLOSE_SCREEN_ARGS_DECL)
     }
 
     hwc->rendererIsRunning = 0;
+    hwc_trigger_redraw(pScrn);
 
     pthread_join(hwc->rendererThread, NULL);
     pthread_mutex_destroy(&(hwc->rendererLock));
