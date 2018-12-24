@@ -597,6 +597,8 @@ static void hwcBlockHandler(ScreenPtr pScreen, void *timeout)
                 }
                 renderer->fence = eglCreateSyncKHR(renderer->display,
                                                    EGL_SYNC_FENCE_KHR, NULL);
+                /* make sure created sync object eventually signals */
+                glFlush();
             }
             hwc_trigger_redraw(pScrn);
         }
