@@ -665,7 +665,7 @@ static CARD32 hwc_update_by_timer(OsTimerPtr timer, CARD32 time, void *ptr) {
     PixmapPtr rootPixmap;
     int err;
 
-    if (hwc->dirty) {
+    if (hwc->dirty && hwc->dpmsMode == DPMSModeOn) {
         void *pixels = NULL;
         rootPixmap = pScreen->GetScreenPixmap(pScreen);
         hwc->renderer.eglHybrisUnlockNativeBuffer(hwc->buffer);
