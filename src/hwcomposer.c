@@ -11,12 +11,17 @@
 #include <math.h>
 #include <stddef.h>
 #include <malloc.h>
+#include <dlfcn.h>
 
 #include <android-config.h>
 #include <sync/sync.h>
 #include <hybris/hwcomposerwindow/hwcomposer.h>
 
 #include "driver.h"
+
+void *android_dlopen(const char *filename, int flags);
+void *android_dlsym(void *handle, const char *symbol);
+int android_dlclose(void *handle);
 
 inline static uint32_t interpreted_version(hw_device_t *hwc_device)
 {
@@ -54,6 +59,29 @@ void hwc_set_power_mode(ScrnInfoPtr pScrn, int disp, int mode)
 		hwcDevicePtr->blank(hwcDevicePtr, disp, (mode) ? 0 : 1);
 }
 
+void hwc_start_fake_surfaceflinger(ScrnInfoPtr pScrn) {
+	HWCPtr hwc = HWCPTR(pScrn);
+	void (*startMiniSurfaceFlinger)(void) = NULL;
+
+	// Adapted from https://github.com/mer-hybris/qt5-qpa-hwcomposer-plugin/blob/master/hwcomposer/hwcomposer_backend.cpp#L88
+
+	// A reason for calling this method here is to initialize the binder
+	// thread pool such that services started from for example the
+	// hwcomposer plugin don't get stuck.
+
+	hwc->libminisf = android_dlopen("libminisf.so", RTLD_LAZY);
+
+	if (hwc->libminisf) {
+		startMiniSurfaceFlinger = (void(*)(void))android_dlsym(hwc->libminisf, "startMiniSurfaceFlinger");
+	}
+
+	if (startMiniSurfaceFlinger) {
+		startMiniSurfaceFlinger();
+	} else {
+		xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "libminisf is incompatible or missing. Can not possibly start the fake SurfaceFlinger service.\n");
+	}
+}
+
 Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 {
 	HWCPtr hwc = HWCPTR(pScrn);
@@ -68,6 +96,8 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 
 	framebuffer_device_t* fbDev = NULL;
 	framebuffer_open(module, &fbDev);
+
+	hwc_start_fake_surfaceflinger(pScrn);
 
 	hw_module_t *hwcModule = 0;
 

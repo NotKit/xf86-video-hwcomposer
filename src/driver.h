@@ -119,6 +119,7 @@ typedef struct HWCRec
 
     gralloc_module_t *gralloc;
     alloc_device_t *alloc;
+    void *libminisf;
 
     hwc_composer_device_1_t *hwcDevicePtr;
     hwc_display_contents_1_t **hwcContents;
