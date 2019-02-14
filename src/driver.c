@@ -303,7 +303,7 @@ try_enable_glamor(ScrnInfoPtr pScrn)
     if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
 #endif // __ANDROID__
         if (hwc_glamor_egl_init(pScrn, hwc->renderer.display,
-                hwc->renderer.glamorContext, EGL_NO_SURFACE)) {
+                hwc->renderer.context, EGL_NO_SURFACE)) {
             xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor-hybris initialized\n");
             hwc->glamor = TRUE;
         } else {

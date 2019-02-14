@@ -87,7 +87,7 @@ typedef struct {
     EGLDisplay display;
     EGLSurface surface;
     EGLContext context;
-    EGLContext glamorContext;
+    EGLContext renderContext;
     GLuint rootTexture;
     GLuint cursorTexture;
 

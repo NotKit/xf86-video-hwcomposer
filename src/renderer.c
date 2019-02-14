@@ -156,12 +156,10 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn, Bool do_glamor)
     assert(context != EGL_NO_CONTEXT);
     renderer->context = context;
 
-    if (do_glamor) {
-        // Create shared context for glamor
-        renderer->glamorContext = eglCreateContext(renderer->display, ecfg, context, ctxattr);
-        assert(eglGetError() == EGL_SUCCESS);
-        assert(renderer->glamorContext != EGL_NO_CONTEXT);
-    }
+    // Create shared context for render thread
+    renderer->renderContext = eglCreateContext(renderer->display, ecfg, context, ctxattr);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(renderer->renderContext != EGL_NO_CONTEXT);
 
     assert(eglMakeCurrent((EGLDisplay) display, surface, surface, context) == EGL_TRUE);
 
@@ -181,8 +179,8 @@ Bool hwc_egl_renderer_init(ScrnInfoPtr pScrn, Bool do_glamor)
     renderer->projShader.program = 0;
     renderer->fence = EGL_NO_SYNC_KHR;
 
-    // Release context so it can be used in different thread
-    assert(eglMakeCurrent(renderer->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) == EGL_TRUE);
+    // Reattach context as surfaceless so it can be used in different thread
+    assert(eglMakeCurrent(renderer->display, EGL_NO_SURFACE, EGL_NO_SURFACE, context) == EGL_TRUE);
 
     return TRUE;
 }
@@ -193,7 +191,7 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
     HWCPtr hwc = HWCPTR(pScrn);
     hwc_renderer_ptr renderer = &hwc->renderer;
 
-    int result = eglMakeCurrent(renderer->display, renderer->surface, renderer->surface, renderer->context);
+    int result = eglMakeCurrent(renderer->display, renderer->surface, renderer->surface, renderer->renderContext);
     printf("%d %d\n", result, eglGetError());
     assert(result == EGL_TRUE);
 
