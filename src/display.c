@@ -183,10 +183,9 @@ hwc_display_pre_init(ScrnInfoPtr pScrn)
         pScrn->virtualY = pScrn->display->virtualY;
     } else {
         /* Pick rotated HWComposer screen resolution */
-        if (hwc->rotation == HWC_ROTATE_CW || hwc->rotation == HWC_ROTATE_CCW)
-        {
-	    /* portrait mode: swap x/y */
-   	    pScrn->virtualX = hwc->hwcHeight;
+        if (hwc->rotation == HWC_ROTATE_CW || hwc->rotation == HWC_ROTATE_CCW) {
+            /* landscape mode on portrait panel: swap x/y */
+            pScrn->virtualX = hwc->hwcHeight;
             pScrn->virtualY = hwc->hwcWidth;
         } else {
             pScrn->virtualX = hwc->hwcWidth;
