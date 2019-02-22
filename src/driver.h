@@ -41,6 +41,7 @@ Bool hwc_display_pre_init(ScrnInfoPtr pScrn);
 Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn);
 void hwc_hwcomposer_close(ScrnInfoPtr pScrn);
 Bool hwc_lights_init(ScrnInfoPtr pScrn);
+Bool hwc_drihybris_screen_init(ScreenPtr screen);
 
 struct ANativeWindow *hwc_get_native_window(ScrnInfoPtr pScrn);
 void hwc_toggle_screen_brightness(ScrnInfoPtr pScrn);
@@ -77,6 +78,7 @@ typedef struct {
 
 typedef struct {
     PFNEGLHYBRISCREATENATIVEBUFFERPROC eglHybrisCreateNativeBuffer;
+    PFNEGLHYBRISCREATEREMOTEBUFFERPROC eglHybrisCreateRemoteBuffer;
     PFNEGLHYBRISLOCKNATIVEBUFFERPROC eglHybrisLockNativeBuffer;
     PFNEGLHYBRISUNLOCKNATIVEBUFFERPROC eglHybrisUnlockNativeBuffer;
     PFNEGLHYBRISRELEASENATIVEBUFFERPROC eglHybrisReleaseNativeBuffer;

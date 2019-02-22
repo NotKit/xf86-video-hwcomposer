@@ -32,6 +32,7 @@
  * Driver data structures.
  */
 #include "driver.h"
+#include "pixmap.h"
 
 #ifdef ENABLE_GLAMOR
 #define GLAMOR_FOR_XORG 1
@@ -283,13 +284,11 @@ Probe(DriverPtr drv, int flags)
     return foundScreen;
 }
 
-#ifdef ENABLE_GLAMOR
 static void
-try_enable_glamor(ScrnInfoPtr pScrn)
+try_enable_drihybris(ScrnInfoPtr pScrn)
 {
-    HWCPtr hwc = HWCPTR(pScrn);
-
 #ifdef ENABLE_DRIHYBRIS
+    HWCPtr hwc = HWCPTR(pScrn);
 #ifndef __ANDROID__
     if (xf86LoadSubModule(pScrn, "drihybris"))
 #endif
@@ -298,6 +297,15 @@ try_enable_glamor(ScrnInfoPtr pScrn)
         xf86DrvMsg(pScrn->scrnIndex, X_INFO, "drihybris initialized\n");
     }
 #endif
+}
+
+static void
+try_enable_glamor(ScrnInfoPtr pScrn)
+{
+#ifdef ENABLE_GLAMOR
+    HWCPtr hwc = HWCPTR(pScrn);
+
+    try_enable_drihybris(pScrn);
 
 #ifndef __ANDROID__
     if (xf86LoadSubModule(pScrn, GLAMOR_EGLHYBRIS_MODULE_NAME)) {
@@ -316,8 +324,8 @@ try_enable_glamor(ScrnInfoPtr pScrn)
                    "Failed to load glamor-hybris module.\n");
     }
 #endif // __ANDROID__
+#endif // ENABLE_GLAMOR
 }
-#endif
 
 # define RETURN \
     { FreeRec(pScrn);\
@@ -512,11 +520,23 @@ PreInit(ScrnInfoPtr pScrn, int flags)
 
     hwc->glamor = FALSE;
     hwc->drihybris = FALSE;
-#ifdef ENABLE_GLAMOR
     if (do_glamor) {
         try_enable_glamor(pScrn);
     }
-#endif
+    if (!hwc->glamor) {
+        try_enable_drihybris(pScrn);
+
+        if (hwc->drihybris) {
+            // Force RGBA
+            pScrn->mask.red = 0xff;
+            pScrn->mask.blue = 0xff0000;
+            pScrn->offset.red = 0;
+            pScrn->offset.blue = 16;
+
+            if (!xf86SetDefaultVisual(pScrn, -1))
+                return FALSE;
+        }
+    }
 
     return TRUE;
 }
@@ -834,6 +854,13 @@ ScreenInit(SCREEN_INIT_ARGS_DECL)
         else
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                        "Failed to initialize XV support.\n");
+    } else {
+        if (hwc->drihybris) {
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                       "Initializing drihybris.\n");
+            hwc_drihybris_screen_init(pScreen);
+        }
+        hwc_pixmap_init(pScreen);
     }
 
     /* Report any unused options (only for the first generation) */

@@ -68,6 +68,9 @@ Bool hwc_init_hybris_native_buffer(ScrnInfoPtr pScrn)
     renderer->eglHybrisCreateNativeBuffer = (PFNEGLHYBRISCREATENATIVEBUFFERPROC) eglGetProcAddress("eglHybrisCreateNativeBuffer");
     assert(renderer->eglHybrisCreateNativeBuffer != NULL);
 
+    renderer->eglHybrisCreateRemoteBuffer = (PFNEGLHYBRISCREATEREMOTEBUFFERPROC) eglGetProcAddress("eglHybrisCreateRemoteBuffer");
+    assert(renderer->eglHybrisCreateRemoteBuffer != NULL);
+
     renderer->eglHybrisLockNativeBuffer = (PFNEGLHYBRISLOCKNATIVEBUFFERPROC) eglGetProcAddress("eglHybrisLockNativeBuffer");
     assert(renderer->eglHybrisLockNativeBuffer != NULL);
 
@@ -208,7 +211,7 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
     if (!renderer->rootShader.program) {
         GLuint prog;
         renderer->rootShader.program = prog =
-            hwc_link_program(vertex_src, hwc->glamor ? fragment_src : fragment_src_bgra);
+            hwc_link_program(vertex_src, (hwc->glamor || hwc->drihybris) ? fragment_src : fragment_src_bgra);
 
         if (!prog) {
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -223,7 +226,7 @@ void hwc_egl_renderer_screen_init(ScreenPtr pScreen)
     if (!renderer->projShader.program) {
         GLuint prog;
         renderer->projShader.program = prog =
-            hwc_link_program(vertex_mvp_src, hwc->glamor ? fragment_src : fragment_src_bgra);
+            hwc_link_program(vertex_mvp_src, (hwc->glamor || hwc->drihybris) ? fragment_src : fragment_src_bgra);
 
         if (!prog) {
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
