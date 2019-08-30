@@ -21,6 +21,10 @@
 #include <hardware/lights.h>
 #include <hybris/eglplatformcommon/hybris_nativebufferext.h>
 
+#ifdef HWC_DEVICE_API_VERSION_2_0
+#include <hybris/hwc2/hwc2_compatibility_layer.h>
+#endif
+
 #include "compat-api.h"
 
 /* function prototypes */
@@ -39,6 +43,9 @@ typedef struct _color
 void hwc_trigger_redraw(ScrnInfoPtr pScrn);
 Bool hwc_display_pre_init(ScrnInfoPtr pScrn);
 Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn);
+#ifdef HWC_DEVICE_API_VERSION_2_0
+Bool hwc_hwcomposer2_init(ScrnInfoPtr pScrn);
+#endif
 void hwc_hwcomposer_close(ScrnInfoPtr pScrn);
 Bool hwc_lights_init(ScrnInfoPtr pScrn);
 
@@ -131,6 +138,10 @@ typedef struct HWCRec
     uint32_t hwcVersion;
     int hwcWidth;
     int hwcHeight;
+
+    hwc2_compat_device_t* hwc2Device;
+    hwc2_compat_display_t* hwc2_primary_display;
+    hwc2_compat_layer_t* hwc2_primary_layer;
 
     hwc_renderer_rec renderer;
     EGLClientBuffer buffer;
