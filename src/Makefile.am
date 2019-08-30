@@ -28,7 +28,7 @@
 AM_CFLAGS = $(XORG_CFLAGS)
 
 hwcomposer_drv_la_LTLIBRARIES = hwcomposer_drv.la
-hwcomposer_drv_la_LDFLAGS = -module -avoid-version -lhardware -lsync -lepoxy
+hwcomposer_drv_la_LDFLAGS = -module -avoid-version -lhardware -lsync -lepoxy -lhybris-hwcomposerwindow -lhwc2
 hwcomposer_drv_la_LIBADD = $(XORG_LIBS)
 hwcomposer_drv_ladir = @moduledir@/drivers
 
@@ -39,6 +39,7 @@ hwcomposer_drv_la_SOURCES = \
          driver.h \
          glutils.c \
          hwcomposer.c \
+         hwcomposer2.c \
          present.c \
          renderer.c \
          shaders.c

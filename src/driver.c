@@ -664,7 +664,7 @@ CreateScreenResources(ScreenPtr pScreen)
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "lock to vaddr %p\n", pixels);
 
     if (!hwc->glamor) {
-        if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, -1, pixels))
+        if (!pScreen->ModifyPixmapHeader(rootPixmap, -1, -1, -1, -1, hwc->stride * 4, pixels))
             FatalError("Couldn't adjust screen pixmap\n");
     }
 

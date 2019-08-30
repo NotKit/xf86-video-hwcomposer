@@ -44,8 +44,11 @@ void hwc_set_power_mode(ScrnInfoPtr pScrn, int disp, int mode)
 	hwc_composer_device_1_t *hwcDevicePtr = hwc->hwcDevicePtr;
 	hw_device_t *hwcDevice = &hwcDevicePtr->common;
 
-	uint32_t hwc_version = hwc->hwcVersion = interpreted_version(hwcDevice);
+	uint32_t hwc_version = hwc->hwcVersion;
 
+	if (hwc_version == HWC_DEVICE_API_VERSION_2_0) {
+		hwc2_compat_display_set_power_mode(hwc->hwc2_primary_display, (mode) ? HWC2_POWER_MODE_ON : HWC2_POWER_MODE_OFF);
+	} else
 #ifdef HWC_DEVICE_API_VERSION_1_4
 	if (hwc_version == HWC_DEVICE_API_VERSION_1_4) {
 		hwcDevicePtr->setPowerMode(hwcDevicePtr, disp, (mode) ? HWC_POWER_MODE_NORMAL : HWC_POWER_MODE_OFF);
@@ -87,31 +90,35 @@ Bool hwc_hwcomposer_init(ScrnInfoPtr pScrn)
 	HWCPtr hwc = HWCPTR(pScrn);
 	int err;
 
-	hw_module_t const* module = NULL;
-	err = hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &module);
-	assert(err == 0);
-
-	hwc->gralloc = (gralloc_module_t*) module;
-	err = gralloc_open((const hw_module_t *) hwc->gralloc, &hwc->alloc);
-
-	framebuffer_device_t* fbDev = NULL;
-	framebuffer_open(module, &fbDev);
-
 	hwc_start_fake_surfaceflinger(pScrn);
 
 	hw_module_t *hwcModule = 0;
-
 	err = hw_get_module(HWC_HARDWARE_MODULE_ID, (const hw_module_t **) &hwcModule);
 	assert(err == 0);
 
-	hwc_composer_device_1_t *hwcDevicePtr = 0;
-	err = hwc_open_1(hwcModule, &hwcDevicePtr);
-	assert(err == 0);
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "== hwcomposer module ==\n");
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, " * Address: %p\n", hwcModule);
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, " * Module API Version: %x\n", hwcModule->module_api_version);
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, " * HAL API Version: %x\n", hwcModule->hal_api_version); /* should be zero */
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, " * Identifier: %s\n", hwcModule->id);
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, " * Name: %s\n", hwcModule->name);
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, " * Author: %s\n", hwcModule->author);
+	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "== hwcomposer module ==\n");
 
-	hwc->hwcDevicePtr = hwcDevicePtr;
-	hw_device_t *hwcDevice = &hwcDevicePtr->common;
+	hw_device_t *hwcDevice = NULL;
+	err = hwcModule->methods->open(hwcModule, HWC_HARDWARE_COMPOSER, &hwcDevice);
+	if (err) {
+		// For weird reason module open seems to currently fail on tested HWC2 device
+		hwc->hwcVersion = HWC_DEVICE_API_VERSION_2_0;
+	} else {
+		hwc->hwcVersion = interpreted_version(hwcDevice);
+	}
 
-	hwc_set_power_mode(pScrn, HWC_DISPLAY_PRIMARY, 1);	uint32_t hwc_version = hwc->hwcVersion = interpreted_version(hwcDevice);
+	if (hwc->hwcVersion == HWC_DEVICE_API_VERSION_2_0)
+		return hwc_hwcomposer2_init(pScrn);
+	
+	hwc_composer_device_1_t *hwcDevicePtr = (hwc_composer_device_1_t*) hwcDevice;
+	hwc_set_power_mode(pScrn, HWC_DISPLAY_PRIMARY, 1);
 
 	uint32_t configs[5];
 	size_t numConfigs = 5;
@@ -245,9 +252,18 @@ static void present(void *user_data, struct ANativeWindow *window,
 	}
 }
 
+void hwc_present_hwcomposer2(void *user_data, struct ANativeWindow *window,
+								struct ANativeWindowBuffer *buffer);
+
 struct ANativeWindow *hwc_get_native_window(ScrnInfoPtr pScrn) {
 	HWCPtr hwc = HWCPTR(pScrn);
-	struct ANativeWindow *win = HWCNativeWindowCreate(hwc->hwcWidth, hwc->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
+	struct ANativeWindow *win;
+
+	if (hwc->hwcVersion < HWC_DEVICE_API_VERSION_2_0) {
+		win = HWCNativeWindowCreate(hwc->hwcWidth, hwc->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, present, pScrn);
+	} else {
+		win = HWCNativeWindowCreate(hwc->hwcWidth, hwc->hwcHeight, HAL_PIXEL_FORMAT_RGBA_8888, hwc_present_hwcomposer2, pScrn);
+	}
 	return win;
 }
 
