@@ -14,6 +14,7 @@
 #include <dlfcn.h>
 
 #include <android-config.h>
+#include <sys/cdefs.h> // for __BEGIN_DECLS/__END_DECLS found in sync.h
 #include <sync/sync.h>
 #include <hybris/hwcomposerwindow/hwcomposer.h>
 
