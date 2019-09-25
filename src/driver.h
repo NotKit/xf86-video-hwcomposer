@@ -139,9 +139,11 @@ typedef struct HWCRec
     int hwcWidth;
     int hwcHeight;
 
+#ifdef HWC_DEVICE_API_VERSION_2_0
     hwc2_compat_device_t* hwc2Device;
     hwc2_compat_display_t* hwc2_primary_display;
     hwc2_compat_layer_t* hwc2_primary_layer;
+#endif
 
     hwc_renderer_rec renderer;
     EGLClientBuffer buffer;
